@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
-import {BookOpen,Clock,Plus,Play,Pause,Check,Trash2,RotateCcw} from 'lucide-react';
+import {BookOpen,Clock,Plus,Play,Pause,Trash2,RotateCcw} from 'lucide-react';
 import {State,localDate,clock,dayOf} from '../lib/model';
 import {Study,StudyBlock,Flashcard,studySchema,studyPreferencesSchema,studyBlockSchema,flashcardSchema,remainingSeconds,recordTimer,reviewCard,suggestBlocks} from '../lib/study';
 const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -8,7 +8,7 @@ function Field({label,children}:{label:string;children:React.ReactNode}){return 
 const duration=(seconds:number)=>`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 export function StudyOverview({state,today,onOpen}:{state:State;today:string;onOpen:()=>void}){const blocks=state.study.blocks.filter(b=>b.date===today&&!b.done),cards=state.study.cards.filter(c=>c.due<=today);return <section className="panel study-overview"><div className="section-head"><h2>{dayOf(today)===0?'Sunday study review':'Make a little progress.'}</h2><BookOpen size={21}/></div><p>{blocks.length} study block{blocks.length===1?'':'s'} planned today · {cards.length} flashcard{cards.length===1?'':'s'} ready to review.</p>{blocks.slice(0,3).map(b=><div className="mini-study" key={b.id}><strong>{b.courseCode}</strong><span>{clock(b.start)}–{clock(b.end)}</span></div>)}<button className="secondary" onClick={onOpen}>{dayOf(today)===0?'Plan next week’s study blocks':'Open study tools'}</button></section>;}
 export default function StudyWorkspace({state,save,busy}:{state:State;save:(s:State)=>Promise<boolean>;busy:boolean}){
- const study=state.study,[now,Now]=useState(Date.now()),[error,E]=useState(''),[notice,N]=useState(''),[prefs,Prefs]=useState(study.preferences),[suggestions,Suggest]=useState<StudyBlock[]>([]),[block,B]=useState<StudyBlock|null>(null),[course,C]=useState(state.courses[0]?.code||''),[card,Card]=useState<Flashcard|null>(null),[filter,F]=useState('all'),[revealed,Reveal]=useState(false),[confirmClear,Clear]=useState(false);
+ const study=state.study,[now,Now]=useState(()=>Date.now()),[error,E]=useState(''),[notice,N]=useState(''),[prefs,Prefs]=useState(study.preferences),[suggestions,Suggest]=useState<StudyBlock[]>([]),[block,B]=useState<StudyBlock|null>(null),[course,C]=useState(state.courses[0]?.code||''),[card,Card]=useState<Flashcard|null>(null),[filter,F]=useState('all'),[revealed,Reveal]=useState(false),[confirmClear,Clear]=useState(false);
  useEffect(()=>{const t=setInterval(()=>Now(Date.now()),1000);return()=>clearInterval(t);},[]);
  const today=localDate(new Date(now),state.profile!.timezone),codes=[...new Set([...state.courses.map(c=>c.code),...study.cards.map(c=>c.courseCode),...study.sessions.map(s=>s.courseCode),...study.blocks.map(b=>b.courseCode)])];
  const cards=study.cards.filter(c=>filter==='all'||c.courseCode===filter),due=cards.filter(c=>c.due<=today).sort((a,b)=>a.due.localeCompare(b.due)||a.box-b.box),next=due[0],timer=study.timer,remaining=timer?remainingSeconds(timer,now):0;

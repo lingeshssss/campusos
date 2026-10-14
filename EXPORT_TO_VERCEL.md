@@ -1,3 +1,5 @@
+> **Historical document.** This was written by the ChatGPT Sites export, before the migration. The Vercel + Supabase port it describes has now been implemented in this repository. Follow **[DEPLOY_TO_VERCEL.md](./DEPLOY_TO_VERCEL.md)** instead. The data-download advice in step 1 still applies, and importing is now available under **Settings → Bring your data over**.
+
 # Take CampusOS out of ChatGPT
 
 ## What you have

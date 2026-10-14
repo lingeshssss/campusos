@@ -1,3 +1,5 @@
-import {getChatGPTUser} from '../../chatgpt-auth';
-import {plannerSchema,generateSchedules} from '../../../lib/planner';
-export async function POST(request:Request){if(!await getChatGPTUser())return Response.json({error:'Sign in first.'},{status:401});if(request.headers.get('origin')!==new URL(request.url).origin)return Response.json({error:'Invalid request origin.'},{status:403});try{const raw=await request.text();if(raw.length>1000000)return Response.json({error:'Planner input is too large.'},{status:413});const p=plannerSchema.safeParse(JSON.parse(raw));if(!p.success)return Response.json({error:p.error.issues[0].message},{status:400});return Response.json(generateSchedules(p.data),{headers:{'Cache-Control':'no-store'}});}catch(e){return Response.json({error:e instanceof Error?e.message:'Unable to generate schedules.'},{status:400});}}
+import { deps } from '@/lib/server/deps';
+import { plannerRoutes } from '@/lib/server/routes/tools';
+
+export const runtime = 'nodejs';
+export const POST = plannerRoutes(deps).POST;

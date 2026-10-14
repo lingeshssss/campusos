@@ -1,6 +1,6 @@
 'use client';
 import {useState} from 'react';
-import {Plus,Trash2,CalendarDays,Check,ArrowUpRight} from 'lucide-react';
+import {Plus,Trash2,CalendarDays,Check} from 'lucide-react';
 import {State,clock} from '../lib/model';
 import {Planner,Candidate,Section,Schedule,plannerSchema,newCandidate,newSection,newMeeting,missingPrerequisites,walkingWarnings,backupSections,dayMeetings,validSchedule} from '../lib/planner';
 const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];

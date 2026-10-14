@@ -1,19 +1,19 @@
 {
   "version": "7",
-  "dialect": "sqlite",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "6",
-      "when": 1791941980826,
-      "tag": "0000_purple_night_thrasher",
+      "version": "7",
+      "when": 1792011231111,
+      "tag": "0000_init_postgres",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "6",
-      "when": 1791943582061,
-      "tag": "0001_parallel_toad",
+      "version": "7",
+      "when": 1792011236890,
+      "tag": "0001_lock_down_data_api",
       "breakpoints": true
     }
   ]

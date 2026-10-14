@@ -1,50 +1,73 @@
-# CampusOS — Phases 1–3
+# CampusOS
 
-Mobile-first React / Vinext application with server-side routes and Cloudflare D1 (SQLite). Features: authenticated per-user persistence, 3-step onboarding, searchable U.S. university dataset, majors/minors, graduation year, semester dates/timezone, manual class CRUD, conflict warnings, daily dashboard, weekly schedule, and profile settings.
+Mobile-first college companion: onboarding with a searchable U.S. university dataset, class schedules and a daily dashboard, syllabus/deadline import with review, `.ics` export, optional Google Calendar sync, textbooks, grades and GPA, a next-semester planner, study blocks, a Pomodoro timer, flashcards, and data export/import.
 
-## Run locally
+**Stack:** Next.js 16 (App Router, Node runtime) on Vercel · Supabase Auth (email/password + Google) via `@supabase/ssr` · Supabase Postgres via Drizzle ORM + postgres.js · Zod validation. Originally built for ChatGPT Sites (Vinext, Cloudflare D1, ChatGPT identity headers). Those runtime pieces have been removed.
 
-Requirements: Node 22.13+ and npm. Install with `npm install`, then run `npm run db:generate` only when changing the schema. Build with `npm run build`, then initialize your local database before `npm run dev`:
+## Quick start
 
-```sh
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_purple_night_thrasher.sql
+Requirements: Node ≥ 22.13 (24 LTS recommended) and pnpm 11 (`npm install -g pnpm@11.25.0`).
+
+```bash
+pnpm install --frozen-lockfile
+cp .env.example .env.local      # fill in Supabase values (see DEPLOY_TO_VERCEL.md steps 1–3)
+pnpm db:migrate                 # create tables in your Supabase Postgres
+pnpm db:check-access            # confirm the public key cannot read private tables
+pnpm dev                        # http://localhost:3000
 ```
 
-Apply this migration only once per local database. Run automated checks with `node --experimental-strip-types --test tests/model.test.mjs` and `npx tsc --noEmit`.
+Full setup and deployment, including Supabase, Google sign-in, Google Calendar, Vercel and data import: **[DEPLOY_TO_VERCEL.md](./DEPLOY_TO_VERCEL.md)**.
 
- Hosted Sites injects identity headers at the trusted edge. For local testing, use an HTTP client with `oai-authenticated-user-id` and `oai-authenticated-user-email` headers; never expose the local dev server to untrusted traffic. The hosted application rejects missing identity and scopes every record to the authenticated user.
+## Checks
 
-The Sites tooling configures development and deployment. `.openai/hosting.json` declares the D1 binding `DB`. Use the Sites build helper for production packaging. D1 migrations are in `drizzle/`. Runtime database files are not source-controlled.
+```bash
+pnpm typecheck   # TypeScript
+pnpm lint        # ESLint
+pnpm test        # node:test: calculations, scheduling, parsing, study, plus server tests on real Postgres (PGlite)
+pnpm build       # production Next.js build (works with no environment variables set)
+```
+
+Server tests (`tests/server.test.mjs`, `tests/postgres-driver.test.mjs`) run the actual route handlers against an in-process Postgres engine migrated with `drizzle/`. They cover anonymous rejection, forged legacy headers, cross-user isolation, version conflicts, import validation and ownership, the AI quota, Google OAuth state/origin handling, Data API grants and RLS, and the postgres.js driver path. Supabase Auth itself is injected in these tests, so live sign-in still needs a real Supabase project.
+
+## Environment variables
+
+| Variable | Scope | Required |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | public (browser) | yes |
+| `DATABASE_URL` (transaction pooler, 6543) | server secret | yes |
+| `DATABASE_MIGRATION_URL` (session pooler/direct) | local CLI only | for `pnpm db:migrate` |
+| `APP_ORIGIN` | server | for Google Calendar |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY` | server secrets | optional (Calendar sync) |
+| `OPENAI_API_KEY`, `OPENAI_MODEL` | server secret | optional (AI parsing) |
+
+See `.env.example` for details. Missing optional values never prevent building or starting. The related feature explains what is missing.
+
+## Architecture
+
+- `proxy.ts`: refreshes the Supabase session cookie and redirects signed-out page visits to `/login`.
+- `lib/supabase/`: browser and server Supabase clients. `getSessionUser()` verifies the token with `auth.getClaims()` and is the only identity source.
+- `app/login`, `app/signup`, `app/forgot-password`, `app/update-password`, `app/auth/*`: auth screens, the PKCE/OTP callback routes and sign-out.
+- `app/api/*/route.ts`: thin wrappers that inject the session user and database into handlers in `lib/server/routes/` (testable without Next.js).
+- `db/schema.ts`, `drizzle/`: Postgres schema and migrations. All tables reference `auth.users` with cascade delete, have RLS enabled, and have Data API grants revoked.
+- `lib/student-data.ts`: export format and import validation (`campusos-student-data`, schema version 7).
+- `docs/legacy-d1-migrations/`: historical SQLite migrations from the Sites version. Do not run them.
 
 ## Security and data
 
-`GET /api/state` loads the current user's state. `PUT /api/state` validates profile and class fields with Zod, checks request origin, and uses a version number to prevent overwriting newer changes from another tab. State is saved atomically as a bounded JSON document in SQLite. No credentials are stored in browser storage. `GET /api/universities?q=...` searches a bundled snapshot of 2,349 U.S. institutions from https://github.com/Hipo/university-domains-list (retrieved 2026-10-14; dataset is community-maintained and may include stale entries). Manual school name/domain entry is available.
+Every private endpoint (`/api/state`, `/api/export`, `/api/import`, `/api/parse`, `/api/planner`, `/api/calendar`, `/api/books`, `/api/google/*`) requires a verified Supabase session. Identity is never taken from request headers or bodies. Database queries run through a privileged server connection that bypasses RLS, so every query filters by the session user's ID, and the tests check this. Writes require a same-origin `Origin` header. Student state is one validated JSON document per user (`student_states.payload`, jsonb) with a version number for optimistic concurrency, so a stale tab cannot overwrite newer changes. Older tabs that omit newer fields cannot erase them. No credentials are stored in browser storage. `GET /api/universities?q=...` is public and searches a bundled snapshot of 2,349 U.S. institutions from https://github.com/Hipo/university-domains-list (retrieved 2026-10-14; community-maintained, may include stale entries).
 
-Classes are recurring campus-local weekday/time values. The daily view uses the student's IANA timezone, including daylight-saving changes, and respects semester bounds. Travel time is an explicit user estimate, not routing. Multiple meeting patterns for one course can be entered as separate records using the same course code.
+Classes are recurring campus-local weekday/time values. The daily view uses the student's IANA timezone, including daylight-saving changes, and respects semester bounds. Travel time is an explicit user estimate, not routing.
 
-## Current scope and limitations
+## Feature notes by phase
 
-This hosted edition uses Sites / ChatGPT authentication. Standalone email/password and Google OAuth are not implemented. No Google Calendar consent is requested or calendar connection made in Phase 1. No fabricated personal sample data is inserted.
-
-Onboarding writes on Finish; unfinished setup lives in memory. Saved profile and courses persist server-side. Holidays/exceptions are not automatically excluded. Manual dates must be confirmed with the university. Browser QA is unavailable in this build environment; production compilation and focused model/database checks are used.
-
-## Next phases — require user confirmation before implementation
-
-2. Implemented below: syllabus import, deadline review/timeline, and .ics export. Schedule paste/vision import remains future work.
-3. Implemented below: Google Calendar OAuth and sync; activation needs Google Cloud credentials.
-4. Textbook finder, legal free sources, real provider pricing and buyback tracking.
-5. Grades, GPA, weighted finals and attendance calculations.
-6. Next-semester planner, constraints, prerequisites, waitlist backups.
-7. Study blocks, Pomodoro tracking, spaced-repetition flashcards.
-
-Dashboard deadlines now use the Phase 2 timeline.
+The notes below describe feature behavior from the original build phases. Where they say "D1" or "user-scoped state", storage is now the Supabase Postgres `student_states` table with the same validation and version checks. Where they say "Sites" or "ChatGPT", read Supabase Auth on Vercel.
 
 ## Phase 2 implementation
 
 Phase 2 adds:
 
 - PDF/text syllabus import (PDF.js 5.4.624 assets are bundled locally), up to 5 MB / 60 pages / 100,000 extracted characters.
-- `/api/parse`, the single authenticated server-side parsing endpoint for syllabus and quick-add text. Basic extraction works with no provider. An optional server-only OpenAI Responses integration uses structured output and falls back on failure. No API key is currently configured: the connected plugin's required secure local-write helper was missing in the authoring environment, so no key was created.
+- `/api/parse`, the single authenticated server-side parsing endpoint for syllabus and quick-add text. Basic extraction works with no provider. An optional server-only OpenAI Responses integration uses structured output and falls back on failure. Set `OPENAI_API_KEY` (server-only) to enable it. Signed-in users are limited to 20 AI calls per hour, counted in Postgres; at the limit, or on any upstream failure, basic extraction is used.
 - Editable candidate review, unresolved-date handling, source excerpts, item inclusion controls, and explicit review confirmation. Import never saves dates automatically.
 - Separate grading categories and individual assignment weights, exact duplicate prevention, manual add/edit/remove, completion/reopen, and course/date/status filters.
 - Dashboard reminders ranked by days until due, assignment type, and individual grade weight, plus a Sunday overview and quick-entry review flow.
@@ -66,9 +89,9 @@ The basic parser does not guarantee every syllabus date is found. Complex tables
 
 See [GOOGLE_SETUP.md](./GOOGLE_SETUP.md) for activation and exact OAuth redirect URI. The source implements an explicit Google consent flow, server-side encrypted refresh-token storage, dedicated calendar creation, preview-before-write sync, weekly recurring classes, type-specific deadline reminders, and disconnect/revocation. Credentials are not configured, so hosted users see a clear setup-pending state and retain .ics export.
 
-New schema-only migration `drizzle/0001_parallel_toad.sql` adds connection, expiring OAuth state, and single-use sync plan tables without altering existing student data. Apply it once after the Phase 1 migration in local development; Sites applies hosted migrations on deploy.
+Connection, expiring OAuth state and single-use sync plan tables are part of the Postgres migration in `drizzle/`.
 
-Run all tests with `node --experimental-strip-types --test tests/*.test.mjs` (37 tests). No Google account data was read and no external events were written during authoring. Live consent and writes require the user's later Google authorization and in-app approval.
+No Google account data was read and no external events were written during authoring. Live consent and writes require the user's later Google authorization and in-app approval.
 
 ## Phase 4 — textbook finder
 
@@ -80,7 +103,7 @@ Legal free-resource links appear first, with university reserves/interlibrary-lo
 
 Savings compare only books with a bookstore total and selected quote (or paid purchase total). Actual purchases preserve their own total independently of future quote edits. Owned print purchases have an editable finals-week resale-check date, defaulting to seven days before semester end. Reminders appear in the dashboard within seven days and remain until marked done. No scheduled price monitoring, background notification or guarantee of peak resale value is provided.
 
-Book data uses the existing user-scoped D1 state with optimistic concurrency and schema validation. Older clients preserve omitted book collections. No schema migration or new secret is required. Type checking and `node --experimental-strip-types --test tests/*.test.mjs` cover ISBN validation, quote comparisons, savings, import and prior phases. Browser QA requires the supported browser skill, which was unavailable for this delivery.
+Book data uses the existing user-scoped Postgres state with optimistic concurrency and schema validation. Older clients preserve omitted book collections. No schema migration or new secret is required. Type checking and `node --experimental-strip-types --test tests/*.test.mjs` cover ISBN validation, quote comparisons, savings, import and prior phases. Browser QA requires the supported browser skill, which was unavailable for this delivery.
 
 ## Phase 5 — grade tracker and GPA
 
@@ -92,7 +115,7 @@ GPA uses credit-weighted letter points. An official entered letter overrides a r
 
 Attendance scenarios use an explicitly selected model: each absence beyond an allowance removes one equally weighted share of the attendance component. Inputs are bounded and must leave at least one graded meeting. The scenario is separate from logged scores and does not assert that skipping is safe or account for in-class work/mandatory attendance.
 
-The existing authenticated `/api/state` backend persists `gradeCourses` and `gpaSettings` in user-scoped D1 JSON with optimistic version checks. Defaults preserve prior records, and older tabs preserve omitted Phase 5 fields. No new migration, API key or external service is required. `tests/phase5.test.mjs` tests weighted/equal scoring, missing scores, final scenarios, attendance, GPA, cutoff boundaries and invalid input. TypeScript checks and all 54 tests pass; supported browser QA is unavailable in this environment.
+The existing authenticated `/api/state` backend persists `gradeCourses` and `gpaSettings` in user-scoped Postgres JSON with optimistic version checks. Defaults preserve prior records, and older tabs preserve omitted Phase 5 fields. No new migration, API key or external service is required. `tests/phase5.test.mjs` tests weighted/equal scoring, missing scores, final scenarios, attendance, GPA, cutoff boundaries and invalid input. TypeScript checks and all 54 tests pass; supported browser QA is unavailable in this environment.
 
 ## Phase 6 — next-semester planner
 
@@ -104,7 +127,7 @@ Walking/shuttle routes use entered bidirectional times or an explicitly labeled 
 
 Degree progress is a reviewed checklist. Paste one requirement per audit line or enter lines manually, mark completions and map candidate courses to requirements. Prerequisite warnings compare listed required codes against the student's completed courses; OR prerequisites, minimum grades, corequisites and institutional double-counting rules require manual review. Faculty links search RateMyProfessors. Historical section GPA can be entered with a published source URL and term context. There is no live course catalog, seat, rating or grade-distribution API integration.
 
-Planner state persists in existing user-scoped D1 data through optimistic concurrency. Older tabs preserve omitted planner data; existing records receive safe defaults. No migration or new credential is required. Type checks and all 66 tests cover prior phases plus complete enumeration, linked-meeting conflicts, constraint boundaries, lunch gaps, status filtering, ranking, backups, travel, prerequisites and explicit size limits. Supported browser QA remains unavailable.
+Planner state persists in existing user-scoped Postgres data through optimistic concurrency. Older tabs preserve omitted planner data; existing records receive safe defaults. No migration or new credential is required. Type checks and all 66 tests cover prior phases plus complete enumeration, linked-meeting conflicts, constraint boundaries, lunch gaps, status filtering, ranking, backups, travel, prerequisites and explicit size limits. Supported browser QA remains unavailable.
 
 ## Phase 7 — study tools and portability
 
@@ -112,8 +135,8 @@ Open **Study** for a persistent course-linked focus timer, study-block planning,
 
 Focus and break timers persist timestamps on start/pause/resume. They survive navigation/reload and count wall-clock time while closed; the UI explicitly tells students to pause when not studying. The student saves elapsed/completed focus time, with unique session IDs and optimistic concurrency preventing duplicate saves. Breaks never count toward course totals. Sessions can be removed. No background notification or closed-app execution is promised.
 
-Course-organized flashcards implement a simple review ladder: Good advances one box and Easy two, capped at six; intervals are 1/3/7/14/30/60 days. Again resets to box zero, due today. Dates use the profile timezone. Cards support create/edit/delete/reset and due-card review with answer reveal. Dashboard cards show today's blocks and due flashcards, and Sunday links to weekly planning. Study state is validated and stored in the existing user-scoped D1 state with safe defaults and old-tab preservation.
+Course-organized flashcards implement a simple review ladder: Good advances one box and Easy two, capped at six; intervals are 1/3/7/14/30/60 days. Again resets to box zero, due today. Dates use the profile timezone. Cards support create/edit/delete/reset and due-card review with answer reveal. Dashboard cards show today's blocks and due flashcards, and Sunday links to weekly planning. Study state is validated and stored in the existing user-scoped Postgres state with safe defaults and old-tab preservation.
 
-**Settings → Download my data** uses authenticated `/api/export` to download only validated student state. It excludes credentials and Google token/sync tables. See `EXPORT_TO_VERCEL.md` for the separate source-export and migration instructions. Current deployment requires Sites/Cloudflare adapters; the ZIP is not a drop-in Vercel app.
+**Settings → Download my data** uses authenticated `/api/export` to download only validated student state. It excludes credentials and Google token/sync tables. **Settings → Bring your data over** imports such a file after validation, a preview and explicit confirmation. It replaces the signed-in user's data and never imports IDs or tokens; see DEPLOY_TO_VERCEL.md step 15.
 
 Validation: TypeScript, 74 tests and the production build. Tests cover timer pause/resume/reload semantics, duplicate logs, break exclusion, clock rollback, repetition intervals, study windows, buffers, existing blocks and deadline priority. Supported browser QA was unavailable.

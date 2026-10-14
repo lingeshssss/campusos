@@ -1,7 +1,7 @@
 import type { State } from './model.ts';
 import { addDays, dayOf } from './model.ts';
 export function calendarEscape(value: string) { return value.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r/g, ''); }
-export function foldLine(value: string) { const encoder = new TextEncoder(); let lines: string[] = [], line = '', bytes = 0; for (const ch of value) {
+export function foldLine(value: string) { const encoder = new TextEncoder(); const lines: string[] = []; let line = '', bytes = 0; for (const ch of value) {
     const n = encoder.encode(ch).length;
     if (bytes + n > 75) {
         lines.push(line);

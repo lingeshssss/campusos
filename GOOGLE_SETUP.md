@@ -1,25 +1,22 @@
 # Activate CampusOS Google Calendar sync
 
-The Phase 3 application code is deployed, but Google OAuth credentials have not been configured. No Google account has been connected and no external calendar/events have been created by the authoring agent.
+Calendar sync is optional. Without it, the rest of CampusOS works and `.ics` export stays available. Step-by-step console instructions are in [DEPLOY_TO_VERCEL.md](./DEPLOY_TO_VERCEL.md#13-configure-google-calendar-sync-optional). This page summarizes the setup and documents the sync behavior.
 
-## One-time app owner setup
+## Setup summary
 
-1. Open https://console.cloud.google.com/ and choose a Google Cloud project you control.
-2. Enable **Google Calendar API** under APIs & Services → Library.
-3. In **Google Auth Platform**, configure the app's branding and audience. For a private test app, add the Google accounts that will test CampusOS as test users. Follow the Console's current consent-screen and domain requirements. Public distribution may need Google's verification.
-4. Create an OAuth client of type **Web application**. Set this exact authorized redirect URI:
+1. Enable **Google Calendar API** in a Google Cloud project you control, configure Google Auth Platform branding/audience (add test users while in Testing), and add the `https://www.googleapis.com/auth/calendar.app.created` scope.
+2. Create a dedicated OAuth client of type **Web application** for Calendar. It must be separate from the "Sign in with Google" client, which is configured inside Supabase. Authorized redirect URIs:
+   - `https://YOUR-PRODUCTION-DOMAIN/api/google/oauth/callback`
+   - optionally `http://localhost:3000/api/google/oauth/callback` for local development
+3. Set these **server-only** environment variables (Vercel: Production only; locally: `.env.local`), then redeploy:
+   - `APP_ORIGIN`: the exact origin, e.g. `https://campusos.example.com`. The redirect URI is derived from it and validated: `https://` is required except for `http://localhost`.
+   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+   - `TOKEN_ENCRYPTION_KEY`: generate with `openssl rand -base64 32`
+4. Open CampusOS → **Calendar sync**, tick the permission box, **Continue to Google**, then **Create CampusOS calendar** and **Preview sync changes**. Approve each batch of up to 20 changes.
 
-   `https://campusos-daily-lingesh.humblelynx9.chatgpt.site/api/google/oauth/callback`
+The flow runs only when the request origin equals `APP_ORIGIN`. Vercel Preview URLs and other hosts show a notice instead of starting OAuth. If a variable is missing, Calendar sync lists which one; nothing crashes.
 
-5. Add the resulting credentials to the CampusOS hosted runtime configuration as server-side secrets:
-   - `GOOGLE_CLIENT_ID`
-   - `GOOGLE_CLIENT_SECRET`
-
-   Do not paste secrets into chat, commit them, or put them in client-side code. The current deployment has no Google credentials. The trusted Sites environment-variable tooling can configure them when a secure source is available. Redeploy after configuration so the runtime receives them.
-6. Open CampusOS → **Calendar sync**. Check the permission box and choose **Continue to Google**. Authorize the intended Google account. The connection uses the `calendar.app.created`, `openid`, and `email` scopes.
-7. Choose **Create CampusOS calendar**, then **Preview sync changes**. Review creates, updates, and removals, check the approval box, and sync. Large change sets are applied in batches of up to 20; refresh and approve the next batch when requested.
-
-For local development, configure an explicitly registered localhost redirect URI and adapt `APP_ORIGIN` / `REDIRECT_URI` in `lib/google-server.ts`. The current constants are pinned to the deployed private origin to prevent request-host manipulation. The app still uses Sites authentication for its own user identity; Google authorization grants Calendar access only.
+**Moving from the ChatGPT-hosted version:** Google tokens were not exported and cannot be imported. Reconnect here. Your old "CampusOS" calendar and events still exist in Google and are not managed by this version, so review or delete them before creating a new calendar to avoid duplicates.
 
 ## Behavior
 
@@ -33,7 +30,7 @@ For local development, configure an explicitly registered localhost redirect URI
 
 ## Security and recovery
 
-Refresh tokens and PKCE verifiers are encrypted with AES-GCM and authenticated to the CampusOS user ID. A server-only key is derived from the Google client secret with an application-specific context. Rotating that secret requires reconnecting Google accounts. Tokens are never sent to the browser. OAuth uses PKCE, single-use expiring state, a secure HttpOnly state cookie, and explicit consent.
+Refresh tokens and PKCE verifiers are encrypted with AES-256-GCM and authenticated to the CampusOS (Supabase) user ID. The key comes from the dedicated server-only `TOKEN_ENCRYPTION_KEY`, not the Google client secret, so rotating the client secret does not invalidate connections. Rotating or losing `TOKEN_ENCRYPTION_KEY` makes saved connections unreadable, and users must reconnect. Their Google calendars are unaffected. Tokens are never sent to the browser. OAuth uses PKCE, single-use expiring state stored hashed in Postgres and bound to the user, an HttpOnly `SameSite=Lax` state cookie (`Secure` except on `http://localhost`), and explicit consent. Calendar ownership markers use a hash of the user ID that does not depend on the hostname, so changing domains does not orphan managed events. Per-user locks and single-use sync plans live in Postgres, so they work across serverless instances.
 
 If calendar creation times out, CampusOS does not blindly create another calendar. Find any new CampusOS calendar in Google Calendar settings, copy its Calendar ID, and use **Verify and recover calendar**. The app verifies its ownership marker before linking it. If you have checked and no calendar was created, explicitly confirm that fact to allow a fresh creation attempt.
 
@@ -41,7 +38,7 @@ Disconnect removes the local authorization and attempts provider revocation. Exi
 
 ## Verification limits
 
-Automated tests cover recurring payloads, reminders, duplicate prevention, uncertainty recovery, ownership isolation, deletion boundaries, timestamp equivalence, and token encryption. Schema migrations and production compilation are checked. Live Google OAuth and live Calendar writes remain unverified until credentials are configured and the user grants consent. Browser QA is unavailable in the authoring environment.
+Automated tests cover recurring payloads, reminders, duplicate prevention, uncertainty recovery, ownership isolation, deletion boundaries, timestamp equivalence and token encryption. They also cover the OAuth start/callback handlers with a mocked Google token endpoint: state hashing and single use, cookie flags, user binding, origin and preview refusal, encrypted storage, and disconnect. Live Google OAuth and live Calendar writes remain unverified until credentials are configured and a user grants consent.
 
 ## Official references
 

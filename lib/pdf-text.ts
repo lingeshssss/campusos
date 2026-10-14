@@ -1,5 +1,5 @@
 export async function extractPdf(file: File, progress: (message: string) => void) { if (file.size > 5 * 1024 * 1024)
-    throw Error('Choose a PDF smaller than 5 MB.'); const path = '/pdfjs/pdf.mjs'; const pdf = await import(/* @vite-ignore */ path) as typeof import('pdfjs-dist'); pdf.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; const loading = pdf.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false, standardFontDataUrl: '/pdfjs/standard_fonts/', cMapUrl: '/pdfjs/cmaps/', cMapPacked: true }); loading.onPassword = () => { void loading.destroy(); }; let doc; try {
+    throw Error('Choose a PDF smaller than 5 MB.'); const path = '/pdfjs/pdf.mjs'; const pdf = await import(/* webpackIgnore: true */ /* turbopackIgnore: true */ path) as typeof import('pdfjs-dist'); pdf.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.mjs'; const loading = pdf.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false, standardFontDataUrl: '/pdfjs/standard_fonts/', cMapUrl: '/pdfjs/cmaps/', cMapPacked: true }); loading.onPassword = () => { void loading.destroy(); }; let doc; try {
     doc = await loading.promise;
     if (doc.numPages > 60)
         throw Error('Choose a syllabus with 60 pages or fewer.');

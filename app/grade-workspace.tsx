@@ -2,7 +2,7 @@
 import {useState} from 'react';
 import {Plus, Trash2, Calculator, Check, GraduationCap} from 'lucide-react';
 import {State} from '../lib/model';
-import {GradeCourse,GpaSettings,gradeCourseSchema,gpaSettingsSchema,newGradeCourse,defaultGpa,genericScale,rutgersScale,standing,categoryAverage,finalNeeded,attendanceImpact,calculateGpa,letterFor} from '../lib/grades';
+import {GradeCourse,GpaSettings,gradeCourseSchema,gpaSettingsSchema,newGradeCourse,genericScale,rutgersScale,standing,categoryAverage,finalNeeded,attendanceImpact,calculateGpa,letterFor} from '../lib/grades';
 const fmt=(x:number|null,d=1)=>x===null?'—':x.toFixed(d);
 function Field({label,children}:{label:string;children:React.ReactNode}){return <label className="field"><span>{label}</span>{children}</label>;}
 export default function GradeWorkspace({state,save,busy}:{state:State;save:(s:State)=>Promise<boolean>;busy:boolean}){

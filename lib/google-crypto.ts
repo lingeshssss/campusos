@@ -1,0 +1,7 @@
+function base64(bytes: Uint8Array) { return btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', ''); }
+function bytes(value: string) { return Uint8Array.from(atob(value.replaceAll('-', '+').replaceAll('_', '/')), c => c.charCodeAt(0)); }
+export function randomToken() { return base64(crypto.getRandomValues(new Uint8Array(32))); }
+export async function digest(value: string) { return base64(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))); }
+async function encryptionKey(secret: string) { const raw = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('CampusOS Google tokens v1\0' + secret)); return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']); }
+export async function seal(value: string, secret: string, userId: string) { const iv = crypto.getRandomValues(new Uint8Array(12)); const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(userId) }, await encryptionKey(secret), new TextEncoder().encode(value)); return base64(iv) + '.' + base64(new Uint8Array(encrypted)); }
+export async function unseal(value: string, secret: string, userId: string) { const [iv, payload] = value.split('.'); const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes(iv), additionalData: new TextEncoder().encode(userId) }, await encryptionKey(secret), bytes(payload)); return new TextDecoder().decode(plain); }

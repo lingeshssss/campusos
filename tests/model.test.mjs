@@ -1,0 +1,13 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {courseSchema,profileSchema,stateSchema,conflicts,localDate,dayOf,addDays,leaveTime} from '../lib/model.ts';
+const c={id:'d973e7ec-97ac-41cf-9efb-26adff779560',code:'CS111',title:'Intro',section:'01',days:[1,3],start:'10:00',end:'11:20',building:'Hall',room:'12',professor:'Professor',travel:15,color:'mint'};
+const p={name:'Test',university:'Rutgers',domain:'rutgers.edu',majors:'Computer Science',minors:'',graduation:2030,semester:'Fall 2026',start:'2026-09-01',end:'2026-12-20',timezone:'America/New_York'};
+test('valid manual class and profile accepted',()=>{assert.ok(courseSchema.safeParse(c).success);assert.ok(profileSchema.safeParse(p).success)});
+test('reject zero/negative duration, invalid hours and missing days',()=>{for(const change of [{end:'10:00'},{end:'09:00'},{start:'24:00'},{days:[]}])assert.equal(courseSchema.safeParse({...c,...change}).success,false)});
+test('overlapping meetings warn, touching boundaries and different weekdays do not',()=>{const id='9214e4ba-79dd-40ad-ac6c-e183e959ea3e';assert.equal(conflicts(c,[{...c,id,start:'11:00',end:'12:00'}]).length,1);assert.equal(conflicts(c,[{...c,id,start:'11:20',end:'12:00'}]).length,0);assert.equal(conflicts(c,[{...c,id,days:[2]}]).length,0)});
+test('timezone dates across midnight and daylight saving boundaries',()=>{assert.equal(localDate(new Date('2026-10-14T02:00:00Z'),'America/New_York'),'2026-10-13');assert.equal(localDate(new Date('2026-03-08T07:01:00Z'),'America/New_York'),'2026-03-08');assert.equal(localDate(new Date('2026-11-01T06:01:00Z'),'America/New_York'),'2026-11-01')});
+test('calendar day arithmetic does not drift across DST or month boundaries',()=>{assert.equal(addDays('2026-03-07',2),'2026-03-09');assert.equal(addDays('2026-12-31',1),'2027-01-01');assert.equal(dayOf('2026-10-13'),2)});
+test('leave-by calculation handles prior day explicitly',()=>{assert.equal(leaveTime(c),'9:45 AM');assert.equal(leaveTime({...c,start:'00:05',travel:15}),'11:50 PM (previous day)')});
+test('profile rejects backwards semester, invalid date, domain and timezone',()=>{for(const change of [{end:'2026-08-01'},{start:'2026-02-30'},{domain:'https://bad.test'},{timezone:'Invalid/Zone'}])assert.equal(profileSchema.safeParse({...p,...change}).success,false)});
+test('duplicate course IDs cannot overwrite meetings',()=>{assert.equal(stateSchema.safeParse({profile:p,courses:[c,c]}).success,false)});

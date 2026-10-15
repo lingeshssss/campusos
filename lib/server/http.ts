@@ -4,8 +4,13 @@ export const json = (body: unknown, status = 200, headers: Record<string, string
 export const unauthorized = (message = 'Your session has ended. Sign in again to continue.') =>
     json({ error: message, code: 'unauthenticated' }, 401);
 
-/** Browser-initiated writes must come from this site. Requests without an Origin header are rejected. */
+/**
+ * Cookie-authenticated writes must come from this site (CSRF protection); requests without an Origin
+ * header are rejected. Bearer-token requests (the iOS app) are exempt: browsers never attach that header
+ * automatically, and such requests are authenticated only by the token, never by cookies.
+ */
 export function sameOrigin(request: Request) {
+    if (request.headers.has('authorization')) return true;
     const origin = request.headers.get('origin');
     return !!origin && origin === new URL(request.url).origin;
 }

@@ -1,13 +1,22 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { supabasePublicConfig } from './lib/supabase/config';
+import { corsHeaders } from './lib/server/cors';
 
 // Pages reachable without a session. API routes enforce authentication themselves and answer 401 JSON.
-const PUBLIC_PAGES = ['/login', '/signup', '/forgot-password'];
-const isPublic = (path: string) => PUBLIC_PAGES.includes(path) || path.startsWith('/auth/') || path.startsWith('/api/');
+const PUBLIC_PAGES = ['/login', '/signup', '/forgot-password', '/privacy'];
+const isPublic = (path: string) => PUBLIC_PAGES.includes(path) || path.startsWith('/auth/') || path.startsWith('/api/') || path.startsWith('/.well-known/');
 
 /** Refreshes the Supabase session cookie on every request and sends signed-out visitors to /login. */
 export async function proxy(request: NextRequest) {
+    const cors = corsHeaders(request.headers.get('origin'), request.nextUrl.pathname);
+    if (cors && request.method === 'OPTIONS') return new NextResponse(null, { status: 204, headers: cors });
+    if (cors) {
+        // Native-app API call: authenticated by its bearer token inside the route, never by cookies.
+        const response = NextResponse.next({ request });
+        for (const [key, value] of Object.entries(cors)) response.headers.set(key, value);
+        return response;
+    }
     const config = supabasePublicConfig();
     if (!config) return NextResponse.next({ request });
     let response = NextResponse.next({ request });

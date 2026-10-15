@@ -1,11 +1,12 @@
 'use client';
+import { api, platform } from '../platform';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CheckCircle2, Clock, Download, FileText, Flag, Plus, Search, Sparkles, Trash2, Upload, X, Pencil } from 'lucide-react';
-import type { State } from '../lib/model';
-import { clock, dayOf, localDate } from '../lib/model';
-import { Deadline, deadlineSchema, deadlineKinds, Grading, gradingSchema, daysUntil, upcoming, mergeDeadlines, duplicateKey } from '../lib/deadlines';
-import type { Candidate, Extraction } from '../lib/syllabus-parser';
-import { extractPdf } from '../lib/pdf-text';
+import type { State } from '../../lib/model';
+import { clock, dayOf, localDate } from '../../lib/model';
+import { Deadline, deadlineSchema, deadlineKinds, Grading, gradingSchema, daysUntil, upcoming, mergeDeadlines, duplicateKey } from '../../lib/deadlines';
+import type { Candidate, Extraction } from '../../lib/syllabus-parser';
+import { extractPdf } from '../../lib/pdf-text';
 function Field({ label, children }: {
     label: string;
     children: React.ReactNode;
@@ -43,7 +44,7 @@ export default function DeadlineWorkspace({ state, save, busy, initialQuick = ''
     const [page, Page] = useState(initialQuick ? 'import' : 'timeline'), [inputKind, InputKind] = useState<'syllabus' | 'quickadd'>(initialQuick ? 'quickadd' : 'syllabus'), [text, Text] = useState(initialQuick), [importCourse, ImportCourse] = useState(''), [parsing, Parsing] = useState(false), [progress, Progress] = useState(''), [error, ErrorText] = useState(''), [notice, Notice] = useState(''), [rows, Rows] = useState<ReviewRow[]>([]), [warnings, Warnings] = useState<string[]>([]), [grading, GradingRows] = useState<Extraction['grading']>([]), [includeGrading, IncludeGrading] = useState(true), [confirmed, Confirmed] = useState(false), [edit, Edit] = useState<Deadline | null>(null), [filter, Filter] = useState('open'), [course, Course] = useState(''), [search, SearchText] = useState(''), [includeClasses, IncludeClasses] = useState(true), [exporting, Exporting] = useState(false), [aiAvailable, AI] = useState(false), [parseMode, ParseMode] = useState('basic'), [pendingDelete, PendingDelete] = useState<string | null>(null);
     const courseCodes = Array.from(new Set([...state.courses.map(c => c.code), ...state.deadlines.map(d => d.courseCode), ...state.grading.map(g => g.courseCode)])).filter(Boolean);
     useEffect(() => {
-        fetch('/api/parse').then(r => r.json() as Promise<{
+        api('/api/parse').then(r => r.json() as Promise<{
             aiAvailable?: boolean;
         }>).then(r => AI(!!r.aiAvailable)).catch(() => AI(false));
     }, []);
@@ -80,7 +81,7 @@ export default function DeadlineWorkspace({ state, save, busy, initialQuick = ''
         Parsing(true);
         Progress(aiAvailable ? 'Finding dates and grading details…' : 'Finding explicit dates…');
         try {
-            const response = await fetch('/api/parse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: inputKind, text, courseCode: importCourse, useAI: aiAvailable }) });
+            const response = await api('/api/parse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: inputKind, text, courseCode: importCourse, useAI: aiAvailable }) });
             const result = await response.json() as Extraction & {
                 mode: string;
                 courseCode: string;
@@ -161,21 +162,14 @@ export default function DeadlineWorkspace({ state, save, busy, initialQuick = ''
         Exporting(true);
         ErrorText('');
         try {
-            const r = await fetch('/api/calendar?classes=' + (includeClasses ? '1' : '0'));
+            const r = await api('/api/calendar?classes=' + (includeClasses ? '1' : '0'));
             if (!r.ok) {
                 const a = await r.json() as {
                     error: string;
                 };
                 throw Error(a.error);
             }
-            const url = URL.createObjectURL(await r.blob());
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'CampusOS-semester.ics';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 10000);
+            await platform().saveFile('CampusOS-semester.ics', await r.blob(), 'text/calendar');
             Notice(`Calendar downloaded with ${r.headers.get('X-CampusOS-Event-Count') || ''} events.`);
         }
         catch (e) {

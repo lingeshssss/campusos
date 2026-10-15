@@ -1,8 +1,8 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {BookOpen,Clock,Plus,Play,Pause,Trash2,RotateCcw} from 'lucide-react';
-import {State,localDate,clock,dayOf} from '../lib/model';
-import {Study,StudyBlock,Flashcard,studySchema,studyPreferencesSchema,studyBlockSchema,flashcardSchema,remainingSeconds,recordTimer,reviewCard,suggestBlocks} from '../lib/study';
+import {State,localDate,clock,dayOf} from '../../lib/model';
+import {Study,StudyBlock,Flashcard,studySchema,studyPreferencesSchema,studyBlockSchema,flashcardSchema,remainingSeconds,recordTimer,reviewCard,suggestBlocks} from '../../lib/study';
 const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function Field({label,children}:{label:string;children:React.ReactNode}){return <label className="field"><span>{label}</span>{children}</label>;}
 const duration=(seconds:number)=>`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;

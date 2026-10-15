@@ -18,6 +18,8 @@ pnpm dev                        # http://localhost:3000
 
 Full setup and deployment, including Supabase, Google sign-in, Google Calendar, Vercel and data import: **[DEPLOY_TO_VERCEL.md](./DEPLOY_TO_VERCEL.md)**.
 
+The iPhone app (React + Capacitor, bundled client sharing `shared/` and `lib/` with the website): **[IOS_APP.md](./IOS_APP.md)**. Commands: `pnpm mobile:build`, `pnpm ios:sync`, `pnpm ios:open`.
+
 ## Checks
 
 ```bash
@@ -44,7 +46,8 @@ See `.env.example` for details. Missing optional values never prevent building o
 
 ## Architecture
 
-- `proxy.ts`: refreshes the Supabase session cookie and redirects signed-out page visits to `/login`.
+- `proxy.ts`: refreshes the Supabase session cookie, redirects signed-out page visits to `/login`, and answers CORS for the iOS app origin (`capacitor://localhost`) on `/api` only.
+- `shared/`: UI and the platform adapter used by both the website and the iOS app. `mobile/`: the Vite/Capacitor app shell. `ios/`: the native Xcode project.
 - `lib/supabase/`: browser and server Supabase clients. `getSessionUser()` verifies the token with `auth.getClaims()` and is the only identity source.
 - `app/login`, `app/signup`, `app/forgot-password`, `app/update-password`, `app/auth/*`: auth screens, the PKCE/OTP callback routes and sign-out.
 - `app/api/*/route.ts`: thin wrappers that inject the session user and database into handlers in `lib/server/routes/` (testable without Next.js).

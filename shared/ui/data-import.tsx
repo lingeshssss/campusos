@@ -1,7 +1,8 @@
 'use client';
+import { api, platform } from '../platform';
 import { useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, Download, FileUp, RefreshCw } from 'lucide-react';
-import type { StateSummary } from '../lib/student-data';
+import type { StateSummary } from '../../lib/student-data';
 
 const MAX_BYTES = 3_000_000;
 type Preview = { document: unknown; fileName: string; summary: StateSummary; warnings: string[]; exportedAt: string | null; current: { version: number; summary: StateSummary } };
@@ -18,7 +19,7 @@ export default function DataImport({ onImported, onSessionExpired }: { onImporte
     const [preview, setPreview] = useState<Preview | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState(''), [done, setDone] = useState(''), [confirmed, setConfirmed] = useState(false);
 
     async function send(body: unknown) {
-        const r = await fetch('/api/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const r = await api('/api/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         const data = await r.json().catch(() => ({})) as Record<string, unknown>;
         if (r.status === 401) onSessionExpired();
         if (!r.ok) throw Object.assign(Error(typeof data.error === 'string' ? data.error : 'The import could not finish.'), { status: r.status });
@@ -77,7 +78,7 @@ export default function DataImport({ onImported, onSessionExpired }: { onImporte
         <h2>Bring your data over</h2>
         <p className="helper">Import a <strong>campusos-data.json</strong> file from <em>Settings → Download my data</em>. Importing <strong>replaces</strong> your entire CampusOS profile, classes, deadlines, textbooks, grades, planner and study tools with the file’s contents; nothing is merged. It never imports accounts, passwords or Google Calendar access. Reconnect Google Calendar separately afterwards.</p>
         <div className="import-file">
-            <a className="secondary" href="/api/export" download><Download size={16} />Download my current data first</a>
+            <button type="button" className="secondary" onClick={() => void platform().downloadApi('/api/export', 'campusos-data.json').catch(e => setError(e instanceof Error ? e.message : 'Could not download your data.'))}><Download size={16} />Download my current data first</button>
             <button type="button" className="secondary" disabled={busy} onClick={() => input.current?.click()}><FileUp size={16} />{busy && !preview ? 'Checking…' : 'Choose export file'}</button>
             <input ref={input} type="file" accept="application/json,.json" hidden aria-label="CampusOS export file" onChange={e => void choose(e.target.files?.[0])} />
         </div>

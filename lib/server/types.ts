@@ -1,7 +1,7 @@
 import type { Db } from '../../db/types.ts';
 
-/** Identity derived from a verified Supabase session on the server. Never from request headers or bodies. */
-export type SessionUser = { id: string; email: string | null; name: string | null };
+/** Identity from a verified Supabase access token (session cookie or Authorization: Bearer). Never from other headers or bodies. */
+export type SessionUser = { id: string; email: string | null; name: string | null; providers?: string[] };
 
 /** Injected into route handlers so they can be tested against a real Postgres engine without Next.js. */
 export type ApiDeps = {

@@ -66,7 +66,7 @@ test('no runtime source reads ChatGPT hosting headers or Cloudflare bindings', (
         const path = join(dir, name);
         return statSync(path).isDirectory() ? walk(path) : /\.(ts|tsx|mts|mjs|js)$/.test(name) ? [path] : [];
     });
-    const files = ['app', 'lib', 'db', 'components', 'hooks'].flatMap(walk).concat(['proxy.ts', 'next.config.ts', 'drizzle.config.ts']);
+    const files = ['app', 'lib', 'db', 'components', 'hooks', 'shared', 'mobile/src'].flatMap(walk).concat(['proxy.ts', 'next.config.ts', 'drizzle.config.ts']);
     for (const file of files) assert.doesNotMatch(readFileSync(file, 'utf8'), banned, file);
 });
 

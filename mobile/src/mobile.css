@@ -1,0 +1,10 @@
+/* Self-hosted fonts (SIL Open Font License; the license files ship in each @fontsource-variable package). The website loads
+   the same families from Google Fonts; the app bundles them so it works offline and makes no font requests. */
+@font-face{font-family:'DM Sans';font-style:normal;font-display:swap;font-weight:100 1000;src:url('../../node_modules/@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2') format('woff2-variations')}
+@font-face{font-family:'Manrope';font-style:normal;font-display:swap;font-weight:200 800;src:url('../../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2') format('woff2-variations')}
+html,body{-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+input,select,textarea{font-size:16px}
+/* Solid backdrop behind the iPhone status bar so scrolled content never runs under the clock. */
+.app-shell::before,.setup::before{content:'';position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);z-index:40;pointer-events:none}
+.app-shell::before{background:#fbfcf8;border-bottom:1px solid transparent}
+.setup::before{background:#1d473a}

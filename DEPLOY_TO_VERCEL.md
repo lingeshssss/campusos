@@ -160,7 +160,7 @@ Before the first deploy, open **Environment Variables** (on the import screen, o
 | `OPENAI_API_KEY` | optional | ❌ | **Secret.** Enables AI syllabus parsing |
 | `OPENAI_MODEL` | optional | ❌ | Defaults to `gpt-4.1-mini` |
 
-`DATABASE_MIGRATION_URL` is **not** needed in Vercel; migrations run from your computer. Mark secrets as **Sensitive** if Vercel offers it.
+`DATABASE_MIGRATION_URL` is **not** needed in Vercel; migrations run from your computer. The optional iPhone app adds `IOS_BUNDLE_ID`, `APPLE_TEAM_ID`, `APPLE_SIGNIN_KEY_ID`, `APPLE_SIGNIN_PRIVATE_KEY` and `SUPPORT_EMAIL` (see IOS_APP.md). Mark secrets as **Sensitive** if Vercel offers it.
 
 ## 11. Deploy
 

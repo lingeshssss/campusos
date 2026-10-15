@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vendored third-party PDF.js build, served as-is.
     "public/pdfjs/**",
+    // Generated iOS app build output and native project.
+    "mobile/dist/**",
+    "ios/**",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
@@ -23,6 +26,15 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-unused-vars": "off",
       "react-hooks/purity": "off",
       "react-hooks/set-state-in-effect": "off",
+    },
+  },
+  {
+    // Shared UI and the iOS app also run outside Next.js (bundled by Vite into the Capacitor app), so
+    // they use plain anchors and navigation through the platform adapter instead of next/link.
+    files: ["shared/**/*.{ts,tsx}", "mobile/**/*.{ts,tsx}"],
+    rules: {
+      "@next/next/no-html-link-for-pages": "off",
+      "@next/next/no-location-assign-relative-destination": "off",
     },
   },
 ]);

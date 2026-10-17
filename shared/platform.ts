@@ -1,4 +1,5 @@
 import type { State } from '../lib/model.ts';
+import { forgetAccountTheme } from '../lib/theme/runtime.ts';
 
 // Everything the shared CampusOS UI needs from its host. The website (Next.js) uses relative URLs and
 // cookie sessions; the iOS app (Capacitor) uses bearer tokens, an offline cache and native sharing.
@@ -97,6 +98,7 @@ export const webPlatform: Platform = {
         window.open(url, '_blank', 'noopener,noreferrer');
     },
     async signOut() {
+        forgetAccountTheme(); // the next person to sign in on this browser must not see this school's colors
         // A real form POST so the server clears the httpOnly session cookies and redirects.
         const form = document.createElement('form');
         form.method = 'POST';
@@ -110,6 +112,7 @@ export const webPlatform: Platform = {
     async deleteAccount() {
         const r = await webApi('/api/account/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'DELETE' }) });
         if (!r.ok) await readError(r, 'Your account could not be deleted. Your CampusOS data is still there; please retry.');
+        forgetAccountTheme();
         // Clear the session cookies on the server, then land on the sign-in page with a confirmation.
         const form = document.createElement('form');
         form.method = 'POST';
@@ -118,6 +121,7 @@ export const webPlatform: Platform = {
         form.submit();
     },
     sessionExpired() {
+        forgetAccountTheme();
         window.location.href = '/login?error=session_expired';
     },
     calendarConnect: { mode: 'form' },

@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { BOOT_SCRIPT } from '../lib/theme/boot.ts';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
@@ -12,6 +13,17 @@ function stripRemoteFonts(): Plugin {
         transform(code, id) {
             if (id.endsWith('app/globals.css')) return code.replace(/@import url\('https:\/\/fonts\.googleapis\.com[^']*'\);?/, '');
         },
+    };
+}
+
+// Applies the cached Light/Dark choice and school palette before the first paint. The app's
+// Content-Security-Policy forbids inline scripts, so the boot script ships as a same-origin file.
+function themeBoot(): Plugin {
+    return {
+        name: 'campusos-theme-boot',
+        transformIndexHtml: { order: 'post', handler: html => ({ html, tags: [{ tag: 'script', attrs: { src: '/theme-boot.js' }, injectTo: 'head' }] }) },
+        generateBundle() { this.emitFile({ type: 'asset', fileName: 'theme-boot.js', source: BOOT_SCRIPT }); },
+        configureServer(server) { server.middlewares.use('/theme-boot.js', (_req, res) => { res.setHeader('Content-Type', 'text/javascript'); res.end(BOOT_SCRIPT); }); },
     };
 }
 
@@ -34,7 +46,7 @@ export default defineConfig(({ mode }) => ({
     envDir: root,
     // Shares public/ with the website so the PDF.js assets (and their licenses) ship inside the app.
     publicDir: fileURLToPath(new URL('../public', import.meta.url)),
-    plugins: [react(), stripRemoteFonts(), requireEnv(mode)],
+    plugins: [react(), stripRemoteFonts(), requireEnv(mode), themeBoot()],
     // The bundle loads from the device, not the network, so one larger app chunk costs nothing to download.
     build: { outDir: 'dist', emptyOutDir: true, target: 'safari16', sourcemap: false, assetsInlineLimit: 0, chunkSizeWarningLimit: 800 },
     server: { port: 5174, strictPort: true },

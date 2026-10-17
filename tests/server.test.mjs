@@ -164,7 +164,7 @@ test('import rejects wrong formats, unsupported versions, invalid state, oversiz
     const u = await ctx.addUser();
     const cases = [
         [{ hello: 'world' }, /not a CampusOS data export/],
-        [exportDoc(fullState(), { schemaVersion: 8 }), /newer than this app supports/],
+        [exportDoc(fullState(), { schemaVersion: 9 }), /newer than this app supports/],
         [exportDoc(fullState(), { schemaVersion: 6 }), /not supported/],
         [exportDoc(fullState(), { schemaVersion: '7' }), /missing its schema version/],
         [exportDoc(null), /does not contain any student data/],

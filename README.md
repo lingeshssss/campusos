@@ -61,6 +61,17 @@ Every private endpoint (`/api/state`, `/api/export`, `/api/import`, `/api/parse`
 
 Classes are recurring campus-local weekday/time values. The daily view uses the student's IANA timezone, including daylight-saving changes, and respects semester bounds. Travel time is an explicit user estimate, not routing.
 
+## Appearance and university colors
+
+**Settings → Appearance** offers Light, Dark or System (the default; it follows the device), and University or CampusOS accent colors. The top bar has a quick Light → Dark → System toggle. Choices apply instantly, are cached on the device for the first paint, and are saved to the account (`state.preferences`) so they follow the student. Once the account loads, its choice wins; accounts that never chose use the defaults. Signing out keeps the device's appearance and forgets the school colors.
+
+- `lib/theme/tokens.ts`: semantic tokens (surfaces, text, borders, success/warning/danger/info, course and category colors) for light and dark. Components only use these CSS variables.
+- `lib/theme/branding.ts`: verified school colors, matched by exact dataset domain. Each record has the official source URL and the date it was checked. Schools without a record use the CampusOS colors, labeled as such.
+- `lib/theme/palette.ts`: turns official colors into accessible accent tokens for each mode. Raw colors are kept, and variants are adjusted only as far as needed for WCAG AA.
+- `lib/theme/css.ts` generates `app/theme.css` (`pnpm theme:css`). `lib/theme/boot.ts` applies the cached theme before the first paint (inline on the web; `theme-boot.js` in the iOS app).
+
+To add a school, copy its colors from the university's own brand guide into `branding.ts`, using its exact domain from `lib/universities.json`, then run `pnpm test`. The tests check every pairing for contrast in both modes.
+
 ## Feature notes by phase
 
 The notes below describe feature behavior from the original build phases. Where they say "D1" or "user-scoped state", storage is now the Supabase Postgres `student_states` table with the same validation and version checks. Where they say "Sites" or "ChatGPT", read Supabase Auth on Vercel.

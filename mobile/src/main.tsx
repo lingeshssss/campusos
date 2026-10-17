@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Browser } from '@capacitor/browser';
 import { GraduationCap } from 'lucide-react';
+import '../../app/theme.css';
 import '../../app/globals.css';
 import './mobile.css';
 import { config, configProblems } from './config';

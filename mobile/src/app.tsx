@@ -15,6 +15,7 @@ import { supabase } from './supabase';
 import { createNativePlatform, type SignedOutReason } from './native-platform';
 import { AuthScreens, UpdatePassword, signedOutNotices, type AuthNotice, type AuthScreen } from './auth';
 import { permission, reminderPrefs, setReminderPrefs, type ReminderPrefs } from './notifications';
+import { forgetAccountTheme } from '../../lib/theme/runtime';
 
 /** Accepts only this app's two auth callback forms and returns the PKCE code, if any. */
 export function parseAuthCallback(raw: string): { code?: string; error?: string; next?: string } | null {
@@ -74,7 +75,7 @@ function SignedIn({ session, onSignedOut, onChangePassword }: { session: Session
     const [latest, setLatest] = useState<State | null>(null);
     useEffect(() => native.store.subscribe(l => setLatest(l.state)), [native]);
     const name = typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name.split(' ')[0] : '';
-    return <CampusApp key={user.id} displayName={name} email={user.email ?? null} banner={<SyncBanner store={native.store} />} settingsExtras={<DeviceSettings store={native.store} state={() => latest ?? native.store.pending()?.state ?? null} />} />;
+    return <CampusApp key={user.id} userId={user.id} displayName={name} email={user.email ?? null} banner={<SyncBanner store={native.store} />} settingsExtras={<DeviceSettings store={native.store} state={() => latest ?? native.store.pending()?.state ?? null} />} />;
 }
 
 export default function MobileApp() {
@@ -109,16 +110,22 @@ export default function MobileApp() {
         return () => listeners.forEach(l => void l.then(h => h.remove()));
     }, []);
 
-    // Light status bar text over the dark green sign-in/onboarding header, dark text elsewhere.
+    // Signed out (including an expired session): the sign-in screens use the CampusOS palette, never the last
+    // student's school colors. The device's Light/Dark/System choice stays.
+    useEffect(() => { if (session === null) forgetAccountTheme(); }, [session]);
+
+    // Status bar text: light over dark surfaces (dark theme, or the deep brand header on sign-in/onboarding),
+    // dark otherwise. Re-evaluated when the screen or the theme changes.
     useEffect(() => {
         let last = '';
         const apply = () => {
-            const dark = !!document.querySelector('.setup-aside');
+            const dark = document.documentElement.getAttribute('data-theme') === 'dark' || !!document.querySelector('.setup-aside');
             const next = dark ? Style.Dark : Style.Light;
             if (next !== last) { last = next; void StatusBar.setStyle({ style: next }).catch(() => undefined); }
         };
         const observer = new MutationObserver(apply);
         observer.observe(document.body, { childList: true, subtree: true });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
         apply();
         return () => observer.disconnect();
     }, []);

@@ -6,8 +6,8 @@ html,body{-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
 input,select,textarea{font-size:16px}
 /* Solid backdrop behind the iPhone status bar so scrolled content never runs under the clock. */
 .app-shell::before,.setup::before{content:'';position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);z-index:40;pointer-events:none}
-.app-shell::before{background:#fbfcf8;border-bottom:1px solid transparent}
-.setup::before{background:#1d473a}
+.app-shell::before{background:var(--surface-muted);border-bottom:1px solid transparent}
+.setup::before{background:var(--brand-deep)}
 
 /* Native feel: no long-press callout or text selection on controls, and a quick press state instead of hover. */
 button,a,.mobile-nav{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
@@ -17,7 +17,7 @@ button,a,.mobile-nav{-webkit-touch-callout:none;-webkit-user-select:none;user-se
 
 /* Startup problems (misconfigured build) are shown instead of a blank screen. */
 .startup-problem{padding:32px 24px;text-align:center}
-.startup-problem ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;color:#9b4137;font-size:14px;line-height:1.5}
+.startup-problem ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;color:var(--danger-text);font-size:14px;line-height:1.5}
 .startup-problem p{font-size:13px;line-height:1.6}
 
 /* Readability floor. The shared styles shrink labels to 6-9px at phone width, which is too small to read

@@ -11,6 +11,7 @@ import { clearReminders, syncReminders } from './notifications';
 import { appleSignIn, isAppleCancel } from './apple';
 import { apiStateStore, OfflineError, SessionExpiredError, type Platform } from '../../shared/platform';
 import { createOfflineStore, type OfflineStore } from '../../lib/offline-sync';
+import { forgetAccountTheme } from '../../lib/theme/runtime';
 
 export type SignedOutReason = 'signed_out' | 'account_deleted' | 'session_expired';
 
@@ -35,6 +36,7 @@ export async function wipeDevice() {
     await eraseLocalData().catch(() => undefined);
     await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
     await keychain.clear().catch(() => undefined);
+    forgetAccountTheme();
 }
 
 async function shareFile(filename: string, text: string) {

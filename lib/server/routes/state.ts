@@ -34,7 +34,7 @@ export function stateRoutes(deps: ApiDeps) {
             const db = deps.db(), { stored: previous } = await loadState(db, user.id);
             const incoming = body.state ?? {};
             // Older open tabs must not erase fields added by later phases.
-            const parsed = stateSchema.safeParse({ ...incoming, study: incoming.study ?? previous.study, planner: incoming.planner ?? previous.planner, gradeCourses: incoming.gradeCourses ?? previous.gradeCourses ?? [], gpaSettings: incoming.gpaSettings ?? previous.gpaSettings, books: incoming.books ?? previous.books ?? [], deadlines: incoming.deadlines ?? previous.deadlines ?? [], grading: incoming.grading ?? previous.grading ?? [] });
+            const parsed = stateSchema.safeParse({ ...incoming, study: incoming.study ?? previous.study, planner: incoming.planner ?? previous.planner, gradeCourses: incoming.gradeCourses ?? previous.gradeCourses ?? [], gpaSettings: incoming.gpaSettings ?? previous.gpaSettings, books: incoming.books ?? previous.books ?? [], deadlines: incoming.deadlines ?? previous.deadlines ?? [], grading: incoming.grading ?? previous.grading ?? [], preferences: incoming.preferences ?? previous.preferences });
             if (!parsed.success || typeof body.version !== 'number' || !Number.isInteger(body.version) || body.version < 0)
                 return json({ error: parsed.success ? 'Invalid version' : parsed.error.issues[0].message }, 400);
             const version = await writeState(db, user.id, body.version, parsed.data);
@@ -96,7 +96,7 @@ export function importRoutes(deps: ApiDeps) {
             if (typeof expected !== 'number' || !Number.isInteger(expected) || expected < 0) return json({ error: 'Preview the file again before importing.' }, 400);
             if (expected !== current.version)
                 return json({ error: 'Your CampusOS data changed after this preview. Preview the file again before replacing anything.', code: 'conflict' }, 409);
-            const version = await writeState(db, user.id, expected, prepared.state);
+            const version = await writeState(db, user.id, expected, prepared.keepsPreferences ? prepared.state : { ...prepared.state, preferences: current.state.preferences });
             if (version === null)
                 return json({ error: 'Your CampusOS data changed after this preview. Preview the file again before replacing anything.', code: 'conflict' }, 409);
             return json({ imported: true, version, summary: prepared.summary, warnings: prepared.warnings });

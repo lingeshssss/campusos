@@ -4,8 +4,9 @@ import { remainingSeconds } from './study.ts';
 // Shared by /api/export and /api/import. Exports contain only validated student state:
 // never user IDs, Google tokens, OAuth state or sync plans.
 export const EXPORT_FORMAT = 'campusos-student-data';
-export const EXPORT_SCHEMA_VERSION = 7;
-export const SUPPORTED_IMPORT_VERSIONS = [7];
+// v8 adds appearance preferences (state.preferences). v7 files import with the account's current preferences.
+export const EXPORT_SCHEMA_VERSION = 8;
+export const SUPPORTED_IMPORT_VERSIONS = [7, 8];
 export const MAX_IMPORT_BYTES = 3_000_000;
 
 export function exportDocument(state: State, now = new Date()) {
@@ -43,7 +44,7 @@ export function summarize(state: State): StateSummary {
 }
 
 export type PreparedImport =
-    | { ok: true; state: State; summary: StateSummary; exportedAt: string | null; warnings: string[] }
+    | { ok: true; state: State; summary: StateSummary; exportedAt: string | null; warnings: string[]; /** False when the file has no preferences, so the account keeps its own. */ keepsPreferences: boolean }
     | { ok: false; error: string };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -85,5 +86,5 @@ export function prepareImport(document: unknown, now = Date.now()): PreparedImpo
         warnings.push('This export has no profile, so you will see onboarding after importing.');
     if (exportedAt && exportedAtMs > now + 5 * 60_000)
         warnings.push('The export date is in the future. Check that this is the file you expect.');
-    return { ok: true, state, summary: summarize(state), exportedAt, warnings };
+    return { ok: true, state, summary: summarize(state), exportedAt, warnings, keepsPreferences: isObject(document.state.preferences) };
 }

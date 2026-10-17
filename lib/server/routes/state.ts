@@ -2,6 +2,7 @@ import { stateSchema } from '../../model.ts';
 import { exportDocument, prepareImport, summarize, MAX_IMPORT_BYTES } from '../../student-data.ts';
 import { json, unauthorized, sameOrigin, readText, BodyTooLargeError } from '../http.ts';
 import { loadState, writeState } from '../state-store.ts';
+import { describeDbError } from '../db-error.ts';
 import type { ApiDeps } from '../types.ts';
 
 const CONFLICT = 'Your data changed in another tab or device. Reload before editing.';
@@ -15,7 +16,7 @@ export function stateRoutes(deps: ApiDeps) {
             return json({ state, version });
         } catch (e) {
             console.error('state load failed', e);
-            return json({ error: 'Unable to load your data. Please retry.' }, 503);
+            return json({ error: `Unable to load your data. ${describeDbError(e)}` }, 503);
         }
     }
 
@@ -41,7 +42,9 @@ export function stateRoutes(deps: ApiDeps) {
             return json({ version });
         } catch (e) {
             console.error('state save failed', e);
-            return json({ error: 'Could not save. Your changes are still here; please retry.' }, 503);
+            // The session is for an account that no longer exists in auth.users (e.g. deleted); sign in again.
+            if ((e as { cause?: { code?: string } })?.cause?.code === '23503') return unauthorized('Your account could not be found. Sign in again to continue.');
+            return json({ error: `Could not save. Your changes are still here. ${describeDbError(e)}` }, 503);
         }
     }
 

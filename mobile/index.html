@@ -7,9 +7,15 @@
     <meta name="format-detection" content="telephone=no" />
     <title>CampusOS</title>
     <link rel="icon" href="/favicon.svg" />
+    <!-- Painted before the JavaScript loads, so launch goes splash → brand → app with no white flash. -->
+    <style>
+      html,body{margin:0;background:#f7f8f4}
+      .boot{min-height:100vh;display:flex;align-items:center;justify-content:center;font:800 23px/1 Manrope,-apple-system,sans-serif;letter-spacing:-1px;color:#203d35}
+      .boot span{font-weight:500;color:#90b49b}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot">Campus<span>OS</span></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

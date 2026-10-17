@@ -156,6 +156,17 @@ The app is set to **iPhone only** (`TARGETED_DEVICE_FAMILY = 1`). To support iPa
    - Forgot password: open the email on the iPhone, and check that the app shows "Choose a new password."
    - Settings → Account → **Delete account**. Apple users confirm with Apple once more. You should return to sign-in with local data erased.
 
+### With a free Apple ID (no paid membership)
+
+You can run the app on your own iPhone with a free Apple ID. Xcode adds it as a "Personal Team".
+
+1. Xcode → Settings → Accounts → **+** → Apple ID, and sign in.
+2. Target **App** → Signing & Capabilities: pick **Your Name (Personal Team)**.
+3. Remove the **Sign in with Apple** capability (the trash icon next to it). Personal Teams can't sign it, and the build fails with "Personal development teams do not support the Sign in with Apple capability". Keep `VITE_ENABLE_APPLE_SIGNIN=false` and `VITE_ENABLE_GOOGLE_SIGNIN=false`. Add the capability back before a TestFlight build. Don't commit the edited `App.entitlements`.
+4. If Xcode says the bundle ID is unavailable, change it to something unique, such as `com.yourname.campusos.dev`, in Xcode only.
+5. Run on the phone. The first launch says "Untrusted Developer". On the iPhone, go to Settings → General → **VPN & Device Management**, tap your Apple ID, then **Trust**.
+6. Limits: the app stops opening after **7 days**; press Run again to reinstall it. Only email/password sign-in works. Confirmation and reset emails won't open the app, because universal links need Associated Domains. Open the link in Safari, then sign in inside the app.
+
 ## 9. 🍎 TestFlight
 
 1. In App Store Connect (https://appstoreconnect.apple.com) → **Apps** → **+** → **New App**: platform iOS, name **CampusOS** (or another available name), your bundle ID, and any SKU.

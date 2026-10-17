@@ -141,8 +141,9 @@ export default function CampusApp({ displayName, email, initialView = 'Today', i
             B(false);
         }
     }
+    const dialogOpen = !!editor || !!deleteId;
     useEffect(() => {
-        if (!editor && !deleteId)
+        if (!dialogOpen)
             return;
         const previous = document.activeElement as HTMLElement | null;
         const dialog = document.querySelector<HTMLElement>('[role=dialog],[role=alertdialog]');
@@ -179,7 +180,7 @@ export default function CampusApp({ displayName, email, initialView = 'Today', i
                 background.inert = false;
             previous?.focus();
         };
-    }, [!!editor, !!deleteId, busy]);
+    }, [dialogOpen, busy]);
     const onboarding = state && !state.profile;
     const courses = onboarding ? draft : state?.courses ?? [];
     const today = localDate(now, profile.timezone), date = addDays(today, offset), dow = dayOf(date), inTerm = date >= profile.start && date <= profile.end;

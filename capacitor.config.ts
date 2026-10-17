@@ -12,6 +12,8 @@ const config: CapacitorConfig = {
     loggingBehavior: 'none',
     ios: {
         contentInset: 'never',
+        // Matches the page background, so there is no white frame between the splash screen and the app.
+        backgroundColor: '#f7f8f4',
     },
     plugins: {
         Keyboard: { resize: KeyboardResize.Native, resizeOnFullScreen: true },

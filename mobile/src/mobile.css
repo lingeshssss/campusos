@@ -8,3 +8,45 @@ input,select,textarea{font-size:16px}
 .app-shell::before,.setup::before{content:'';position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);z-index:40;pointer-events:none}
 .app-shell::before{background:#fbfcf8;border-bottom:1px solid transparent}
 .setup::before{background:#1d473a}
+
+/* Native feel: no long-press callout or text selection on controls, and a quick press state instead of hover. */
+button,a,.mobile-nav{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.primary:active,.secondary:active,.danger:active{transform:scale(.97)}
+.mobile-nav button:active,.icon:active{opacity:.6}
+.text-button{min-height:44px}
+
+/* Startup problems (misconfigured build) are shown instead of a blank screen. */
+.startup-problem{padding:32px 24px;text-align:center}
+.startup-problem ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;color:#9b4137;font-size:14px;line-height:1.5}
+.startup-problem p{font-size:13px;line-height:1.6}
+
+/* Readability floor. The shared styles shrink labels to 6-9px at phone width, which is too small to read
+   on an iPhone held at arm's length. The app raises them; the website keeps its own sizing. */
+@media(max-width:760px){
+    .setup-main{min-height:calc(100dvh - 82px - env(safe-area-inset-top))}
+    .setup-top{font-size:11px}
+    .setup-top>span:last-child{display:none}
+    .setup-content>.muted{font-size:15px}
+    .setup-foot{font-size:12px}
+    .helper,.field small,.warning,.error{font-size:13px}
+    .field>span{font-size:14px}
+    .text-button{font-size:14px}
+    .primary,.secondary,.danger{font-size:15px}
+    .page-heading .primary{font-size:13px}
+    .page-heading .eyebrow,.campus-card .eyebrow,.modal .eyebrow{font-size:10px}
+    .page-heading .muted,.hero p,.next-panel>p,.section-head p,.campus-card p{font-size:13px}
+    .topbar>span,.private{font-size:12px}
+    .stats p,.stats strong small{font-size:11px}
+    .time-col strong,.time-col>span,.class-event p,.class-event footer,.course-code,.course-card p,.course-card small{font-size:11px}
+    .status,.outline-pill,.connection-pill,.tiny-pill,.deadline-overview .outline-pill,.sync-preview>.section-head .outline-pill{font-size:9px}
+    .panel-foot,.bottom-note,.all-classes small,.week-tabs span{font-size:11px}
+    .deadline-body>p,.deadline-meta,.deadline-summary small,.export-details p,.review-save .check-label{font-size:12px}
+    .calendar-connect-text>p,.ready-calendar .text-button,.ready-calendar small,.sync-option small{font-size:12px}
+    .filter-chips button,.import-tabs button{font-size:13px}
+    .mobile-nav button span{font-size:10px}
+    .toast{font-size:14px}
+}
+@media(max-width:430px){
+    .stats p,.stats strong small,.class-event footer{font-size:11px}
+    .modal .two .field>span{font-size:13px}
+}

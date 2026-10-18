@@ -2,12 +2,14 @@ import { Capacitor } from '@capacitor/core';
 import { KeychainAccess, SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { Preferences } from '@capacitor/preferences';
 
-// iOS Keychain storage for the Supabase session and the local-data encryption key.
-// This-device-only, readable only while unlocked, never synced through iCloud Keychain.
+// Secure storage for the Supabase session and the local-data encryption key.
+// iOS: Keychain, this-device-only, readable only while unlocked, never synced through iCloud Keychain.
+// Android: AES-GCM with a key held in the Android Keystore, stored in app-private SharedPreferences
+// (excluded from Android backups by the manifest, so it never leaves the phone).
 let ready: Promise<void> | null = null;
 function init() {
     ready ??= (async () => {
-        if (!Capacitor.isNativePlatform()) throw Error('Secure storage requires the CampusOS iOS app.');
+        if (!Capacitor.isNativePlatform()) throw Error('Secure storage requires the CampusOS app.');
         await SecureStorage.setKeyPrefix('campusos.');
         await SecureStorage.setSynchronize(false);
         await SecureStorage.setDefaultKeychainAccess(KeychainAccess.whenUnlockedThisDeviceOnly);

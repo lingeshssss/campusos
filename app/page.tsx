@@ -15,6 +15,6 @@ export default async function Home({ searchParams }: { searchParams: Params }) {
     return <>
         {/* Runs during HTML parsing, before the app paints: drop a cached school palette from another account. */}
         <script dangerouslySetInnerHTML={{ __html: `window.__campusTheme&&window.__campusTheme.forUser(${JSON.stringify(user.id).replace(/</g, '\\u003c')})` }} />
-        <CampusApp userId={user.id} displayName={user.name?.split(' ')[0] ?? ''} email={user.email} initialView={params.calendar || params.view === 'calendar' ? 'Calendar sync' : 'Today'} initialToast={params.welcome === 'confirmed' ? 'Email confirmed. Welcome to CampusOS.' : ''} />
+        <CampusApp userId={user.id} passwordAccount={!!user.providers?.includes('email')} displayName={user.name?.split(' ')[0] ?? ''} email={user.email} initialView={params.calendar || params.view === 'calendar' ? 'Calendar sync' : 'Today'} initialToast={params.welcome === 'confirmed' ? 'Email confirmed. Welcome to CampusOS.' : ''} />
     </>;
 }

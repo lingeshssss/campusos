@@ -79,11 +79,13 @@ function CourseCard({ c, onEdit, onDelete }: {
     onEdit: () => void;
     onDelete: () => void;
 }) { return <article className={`course-card ${c.color}`}><div className="section-head"><span className="tag">{c.code}{c.section && ` · ${c.section}`}</span><div className="row"><button className="icon" aria-label={`Edit ${c.code}`} onClick={onEdit}><Pencil size={16}/></button><button className="icon" aria-label={`Delete ${c.code}`} onClick={onDelete}><Trash2 size={16}/></button></div></div><h3>{c.title}</h3><p><Clock size={14}/>{c.days.slice().sort().map(d => days[d]).join(', ')} · {clock(c.start)}–{clock(c.end)}</p><p><MapPin size={14}/>{[c.building, c.room].filter(Boolean).join(' · ') || 'Room not added yet'}</p>{c.professor && <small>{c.professor}</small>}</article>; }
-export default function CampusApp({ userId = null, displayName, email, initialView = 'Today', initialToast = '', banner, settingsExtras }: {
+export default function CampusApp({ userId = null, displayName, email, passwordAccount = false, initialView = 'Today', initialToast = '', banner, settingsExtras }: {
     /** Signed-in account ID; ties the cached school palette to this account. */
     userId?: string | null;
     displayName: string;
     email: string | null;
+    /** Signed in with email + password (account deletion asks for the password again). */
+    passwordAccount?: boolean;
     initialView?: string;
     initialToast?: string;
     /** Host-specific status shown above every view (the iOS app uses it for offline sync). */
@@ -158,6 +160,18 @@ export default function CampusApp({ userId = null, displayName, email, initialVi
         PrefDraft(null); // saved (state now holds it) or failed (back to the saved choice; the error is shown)
     }
     const dialogOpen = !!editor || !!deleteId;
+    // Android back button / gesture (dispatched by the app shell). Handled = event.preventDefault(); otherwise
+    // the app shell sends the app to the background, like other Android apps at their top screen.
+    useEffect(() => {
+        const onBack = (e: Event) => {
+            if (busy) return e.preventDefault();
+            if (editor || deleteId) { Editor(null); Delete(null); return e.preventDefault(); }
+            if (state && !state.profile && step > 0) { Step(step - 1); return e.preventDefault(); }
+            if (state?.profile && view !== 'Today') { T('Today'); E(''); Offset(0); P(state.profile); return e.preventDefault(); }
+        };
+        window.addEventListener('campusos:back', onBack);
+        return () => window.removeEventListener('campusos:back', onBack);
+    }, [busy, editor, deleteId, state, step, view]);
     useEffect(() => {
         if (!dialogOpen)
             return;
@@ -261,5 +275,5 @@ export default function CampusApp({ userId = null, displayName, email, initialVi
                         return;
                     }
                     await save({ ...state, profile: parsed.data });
-                }}><h2>University & profile</h2><ProfileForm p={profile} set={P} step={0}/><h2>Studies & semester</h2><ProfileForm p={profile} set={P} step={1}/><div className="modal-actions"><button disabled={busy} className="primary">{busy ? 'Saving…' : 'Save changes'}<Check size={17}/></button></div></form></section>{settingsExtras}<AccountSettings email={email}/></>}</div></main><nav className="mobile-nav">{[{ n: 'Today', i: LayoutDashboard }, { n: 'My schedule', i: CalendarDays }, { n: 'Deadlines', i: BookOpen }, { n: 'Study', i: Sparkles }, { n: 'Planner', i: CalendarDays }, { n: 'Grades', i: Layers }, { n: 'Textbooks', i: BookOpen }, { n: 'Calendar sync', i: Clock }, { n: 'My campus', i: GraduationCap }, { n: 'Settings', i: Settings }].map(({ n, i: Icon }) => <button key={n} className={view === n ? 'active' : ''} onClick={() => goto(n)}><Icon size={21}/><span>{n.replace('My ', '').replace('Calendar sync', 'Sync')}</span></button>)}</nav></div>}{editor && <CourseEditor key={editor.id} course={editor} all={courses} onSave={saveCourse} onClose={() => Editor(null)} busy={busy}/>} {deleteId && <div className="overlay"><section className="modal small-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-title"><h2 id="delete-title">Remove this class?</h2><p>It will be removed from your saved schedule.</p><div className="modal-actions"><button className="secondary" disabled={busy} onClick={() => Delete(null)}>Keep class</button><button className="danger" disabled={busy} onClick={remove}>{busy ? 'Removing…' : 'Remove class'}</button></div></section></div>}{toast && <div className="toast" role="status"><CheckCircle2 size={18}/>{toast}</div>}{error && (editor || deleteId) && <div className="toast error" role="alert">{error}</div>}</>;
+                }}><h2>University & profile</h2><ProfileForm p={profile} set={P} step={0}/><h2>Studies & semester</h2><ProfileForm p={profile} set={P} step={1}/><div className="modal-actions"><button disabled={busy} className="primary">{busy ? 'Saving…' : 'Save changes'}<Check size={17}/></button></div></form></section>{settingsExtras}<AccountSettings email={email} passwordAccount={passwordAccount}/></>}</div></main><nav className="mobile-nav">{[{ n: 'Today', i: LayoutDashboard }, { n: 'My schedule', i: CalendarDays }, { n: 'Deadlines', i: BookOpen }, { n: 'Study', i: Sparkles }, { n: 'Planner', i: CalendarDays }, { n: 'Grades', i: Layers }, { n: 'Textbooks', i: BookOpen }, { n: 'Calendar sync', i: Clock }, { n: 'My campus', i: GraduationCap }, { n: 'Settings', i: Settings }].map(({ n, i: Icon }) => <button key={n} className={view === n ? 'active' : ''} onClick={() => goto(n)}><Icon size={21}/><span>{n.replace('My ', '').replace('Calendar sync', 'Sync')}</span></button>)}</nav></div>}{editor && <CourseEditor key={editor.id} course={editor} all={courses} onSave={saveCourse} onClose={() => Editor(null)} busy={busy}/>} {deleteId && <div className="overlay"><section className="modal small-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-title"><h2 id="delete-title">Remove this class?</h2><p>It will be removed from your saved schedule.</p><div className="modal-actions"><button className="secondary" disabled={busy} onClick={() => Delete(null)}>Keep class</button><button className="danger" disabled={busy} onClick={remove}>{busy ? 'Removing…' : 'Remove class'}</button></div></section></div>}{toast && <div className="toast" role="status"><CheckCircle2 size={18}/>{toast}</div>}{error && (editor || deleteId) && <div className="toast error" role="alert">{error}</div>}</>;
 }

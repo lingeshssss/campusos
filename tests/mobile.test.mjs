@@ -31,7 +31,7 @@ test('bearer header parsing never falls back to cookies on malformed input', () 
 test('only signed-in, unexpired, non-anonymous claims become users', () => {
     const exp = Math.floor(Date.now() / 1000) + 600;
     const ok = userFromClaims({ sub: 'u1', role: 'authenticated', email: 'a@b.edu', exp, app_metadata: { provider: 'apple', providers: ['apple', 'email'] }, user_metadata: { full_name: 'Avery Lee' } });
-    assert.deepEqual(ok, { id: 'u1', email: 'a@b.edu', name: 'Avery Lee', providers: ['apple', 'email'] });
+    assert.deepEqual(ok, { id: 'u1', email: 'a@b.edu', name: 'Avery Lee', providers: ['apple', 'email'], authenticatedAt: null });
     assert.equal(userFromClaims({ sub: 'u1', role: 'anon', exp }), null);
     assert.equal(userFromClaims({ sub: 'u1', role: 'authenticated', is_anonymous: true, exp }), null);
     assert.equal(userFromClaims({ sub: 'u1', role: 'authenticated', exp: 1000 }), null);

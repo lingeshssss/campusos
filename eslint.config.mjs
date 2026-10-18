@@ -14,9 +14,10 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vendored third-party PDF.js build, served as-is.
     "public/pdfjs/**",
-    // Generated iOS app build output and native project.
+    // Generated mobile app build output and native iOS/Android projects.
     "mobile/dist/**",
     "ios/**",
+    "android/**",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],

@@ -8,6 +8,9 @@ import type { ApiDeps } from '../types.ts';
 
 type AppleRevocation = 'not_apple' | 'revoked' | 'failed' | 'code_missing' | 'not_configured';
 
+/** Password accounts must have signed in (re-entered their password) this recently to delete the account. */
+export const REAUTH_WINDOW_MS = 10 * 60_000;
+
 /**
  * POST { confirm: "DELETE", appleAuthorizationCode? } permanently deletes the signed-in user.
  * Deleting the Supabase auth user cascades to every CampusOS table and to Supabase's own session and
@@ -25,6 +28,11 @@ export function accountRoutes(deps: ApiDeps) {
             return json({ error: 'Invalid request.' }, 400);
         }
         if (body.confirm !== 'DELETE') return json({ error: 'Type DELETE to confirm account deletion.' }, 400);
+        // Reauthentication: someone holding an unlocked device or an old session can't delete a password
+        // account. The client re-signs-in with the password first, which gives a token with a fresh amr time.
+        // (Apple accounts reconfirm with Apple below; Google-only accounts rely on the typed confirmation.)
+        if (user.providers?.includes('email') && !(user.authenticatedAt && (deps.now ?? Date.now)() - user.authenticatedAt <= REAUTH_WINDOW_MS))
+            return json({ error: 'Enter your password to confirm it’s you, then try again.', code: 'reauthentication_required' }, 403);
         const fetcher = deps.fetch ?? fetch, db = deps.db();
 
         let googleRevoked = false;

@@ -96,7 +96,7 @@ export function createOfflineStore(deps: OfflineDeps): OfflineStore {
                 if (snap.pending) await store.sync();
             } catch (e) {
                 if (!(e instanceof OfflineError)) throw e;
-                if (!visible()) throw new OfflineError('You’re offline and this iPhone doesn’t have a saved copy yet. Connect once to download your data.');
+                if (!visible()) throw new OfflineError('You’re offline and this device doesn’t have a saved copy yet. Connect once to download your data.');
                 setStatus({ mode: 'offline' });
             }
             return visible()!;

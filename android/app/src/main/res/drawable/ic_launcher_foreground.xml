@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- CampusOS mark (mobile/app-icon.svg), centred in the 66dp safe zone of a 108dp adaptive icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <group android:translateX="15.6" android:translateY="17.4" android:scaleX="1.2" android:scaleY="1.2">
+        <path android:pathData="M15,25 L32,16 L49,25 L32,34 Z M22,33 L22,45 L42,45 L42,33"
+            android:strokeColor="#CFF582" android:strokeWidth="4" android:strokeLineJoin="round" android:fillColor="#00000000" />
+    </group>
+</vector>

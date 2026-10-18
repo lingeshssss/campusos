@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { deviceName } from './device';
 import { Browser } from '@capacitor/browser';
 import { ArrowRight, GraduationCap, KeyRound, LockKeyhole, Mail } from 'lucide-react';
 import { AuthShell, Divider, GoogleGlyph, Notice, errorMessages, friendly, infoMessages } from '../../shared/ui/auth-shell';
@@ -11,7 +12,7 @@ export type AuthScreen = 'login' | 'signup' | 'forgot';
 /** Turns thrown errors (network, Keychain, Supabase) into a message so no screen is left spinning. */
 function failure(e: unknown, fallback: string) {
     const message = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : '';
-    if (/OS error|-34018|keychain/i.test(message)) return 'CampusOS couldn’t use this iPhone’s secure storage (Keychain). Restart the app and try again.';
+    if (/OS error|-34018|keychain/i.test(message)) return `CampusOS couldn’t use this ${deviceName}’s secure storage. Restart the app and try again.`;
     if (/Failed to fetch|Load failed|NetworkError/i.test(message)) return 'CampusOS couldn’t reach the server. Check your connection and try again.';
     return friendly(e as { message?: string; code?: string }, fallback);
 }
@@ -74,7 +75,7 @@ export function AuthScreens({ screen, setScreen, notice }: { screen: AuthScreen;
     };
     const emailField = <label className="field"><span>Email</span><input type="email" required autoComplete="email" inputMode="email" autoCapitalize="none" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@university.edu" /></label>;
 
-    if (sent) return <AuthShell eyebrow={sent === 'signup' ? 'ALMOST THERE' : 'RESET YOUR PASSWORD'} title="Check your email." intro={sent === 'signup' ? `We sent a confirmation link to ${email}. Open it on this iPhone: it opens CampusOS and signs you in.` : `If an account exists for ${email}, a reset link is on its way. Open it on this iPhone to choose a new password.`} icon={<Mail />}>
+    if (sent) return <AuthShell eyebrow={sent === 'signup' ? 'ALMOST THERE' : 'RESET YOUR PASSWORD'} title="Check your email." intro={sent === 'signup' ? `We sent a confirmation link to ${email}. Open it on this ${deviceName}: it opens CampusOS and signs you in.` : `If an account exists for ${email}, a reset link is on its way. Open it on this ${deviceName} to choose a new password.`} icon={<Mail />}>
         <Notice error={error} info={info} />
         {sent === 'signup' && <p className="helper">Didn’t get it? Check spam, wait a minute, then <button className="text-button" disabled={busy} onClick={resend}>resend it</button>. If you confirmed in a browser instead, come back and sign in.</p>}
         <div className="setup-actions"><span /><button className="primary" onClick={() => go('login')}>Back to sign in<ArrowRight size={17} /></button></div>
@@ -184,9 +185,9 @@ export function UpdatePassword({ email, onDone }: { email: string | null; onDone
 }
 
 export const signedOutNotices: Record<string, AuthNotice> = {
-    signed_out: { info: infoMessages.signed_out + ' Data saved on this iPhone was erased.' },
-    account_deleted: { info: infoMessages.account_deleted + ' Data saved on this iPhone was erased.' },
-    session_expired: { error: errorMessages.session_expired + ' Edits saved on this iPhone sync after you sign in to the same account.' },
+    signed_out: { info: infoMessages.signed_out + ` Data saved on this ${deviceName} was erased.` },
+    account_deleted: { info: infoMessages.account_deleted + ` Data saved on this ${deviceName} was erased.` },
+    session_expired: { error: errorMessages.session_expired + ` Edits saved on this ${deviceName} sync after you sign in to the same account.` },
     link_expired: { error: errorMessages.link_expired },
     oauth_failed: { error: errorMessages.oauth_failed },
 };

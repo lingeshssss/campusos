@@ -2,9 +2,26 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { Preferences } from '@capacitor/preferences';
 import type { State } from '../../lib/model';
 import { planReminders } from '../../lib/reminders';
+import { isAndroid } from './device';
+
+// Android: two user-visible channels (Settings → Apps → CampusOS → Notifications) and a monochrome status-bar
+// icon (android/app/src/main/res/drawable/ic_stat_campusos.xml). Reminders are inexact alarms that may fire
+// while the phone idles (Doze): Android can delay them by several minutes, and CampusOS deliberately does not
+// request the restricted exact-alarm permission. Nothing here is guaranteed to the minute.
+const CHANNELS = { deadline: 'campusos-deadlines', timer: 'campusos-timer' } as const;
+let channels: Promise<void> | null = null;
+function ensureChannels() {
+    if (!isAndroid) return Promise.resolve();
+    channels ??= Promise.all([
+        LocalNotifications.createChannel({ id: CHANNELS.deadline, name: 'Deadline reminders', description: 'Exams, papers and other deadlines you saved', importance: 3, visibility: 0 }),
+        LocalNotifications.createChannel({ id: CHANNELS.timer, name: 'Focus timer', description: 'When a focus or break timer ends', importance: 4, visibility: 0 }),
+    ]).then(() => undefined).catch(() => { channels = null; });
+    return channels;
+}
 
 // On-device reminders (no server push): deadline alerts and the end of a running focus/break timer.
-// Off until the student turns them on in Settings, which is when iOS asks for permission.
+// Off until the student turns them on in Settings, which is when the phone asks for permission
+// (iOS; Android 13+ POST_NOTIFICATIONS). Turning them on is the only time permission is requested.
 export type ReminderPrefs = { deadlines: boolean; timer: boolean };
 const PREFS = 'reminders';
 
@@ -42,7 +59,13 @@ export function syncReminders(state: State): Promise<void> {
         if (pending.notifications.length) await LocalNotifications.cancel({ notifications: pending.notifications.map(n => ({ id: n.id })) });
         if ((!prefs.deadlines && !prefs.timer) || await permission() !== 'granted') return;
         const plan = planReminders(state, new Date(), prefs);
-        if (plan.length) await LocalNotifications.schedule({ notifications: plan.map(r => ({ id: r.id, title: r.title, body: r.body, schedule: { at: r.at, allowWhileIdle: true }, extra: { kind: r.kind } })) });
+        if (!plan.length) return;
+        await ensureChannels();
+        await LocalNotifications.schedule({ notifications: plan.map(r => ({
+            id: r.id, title: r.title, body: r.body, extra: { kind: r.kind },
+            schedule: { at: r.at, allowWhileIdle: true },
+            ...(isAndroid ? { channelId: CHANNELS[r.kind], smallIcon: 'ic_stat_campusos', iconColor: '#1f5143', isExactNotification: false } : {}),
+        })) });
     }).catch(() => undefined);
     return queue;
 }

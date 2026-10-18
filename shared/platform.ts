@@ -28,19 +28,25 @@ export interface StateStore {
 }
 
 export interface Platform {
-    kind: 'web' | 'ios';
+    kind: 'web' | 'ios' | 'android';
+    /** How on-screen text names this device in the apps ("iPhone", "phone"); absent on the web. */
+    deviceName?: string;
     /** Calls a CampusOS API route with this platform's authentication. */
     api(path: string, init?: RequestInit): Promise<Response>;
     state: StateStore;
-    /** Downloads (web) or shares (iOS) an authenticated API response as a file. */
+    /** Downloads (web) or shares (apps) an authenticated API response as a file. */
     downloadApi(path: string, filename: string): Promise<void>;
-    /** Downloads (web) or shares (iOS) generated content. */
+    /** Downloads (web) or shares (apps) generated content. */
     saveFile(filename: string, content: string | Blob, type: string): Promise<void>;
     openExternal(url: string): void;
     signOut(): Promise<void>;
     changePassword(): void;
-    /** Permanently deletes the account after the UI has collected explicit confirmation. */
-    deleteAccount(): Promise<void>;
+    /**
+     * Permanently deletes the account after the UI has collected explicit confirmation. Password accounts pass
+     * `email` and `password`: the platform signs in again first, because the server only deletes a password
+     * account after a recent sign-in (reauthentication).
+     */
+    deleteAccount(reauth?: { email: string; password: string }): Promise<void>;
     sessionExpired(): void;
     /** Where the Google Calendar connection flow runs ('form' = in place, 'website' = opens the site). */
     calendarConnect: { mode: 'form' } | { mode: 'website'; open(): void };
@@ -109,7 +115,13 @@ export const webPlatform: Platform = {
     changePassword() {
         window.location.href = '/update-password';
     },
-    async deleteAccount() {
+    async deleteAccount(reauth) {
+        if (reauth) {
+            // Loaded only here so the app bundles never include the website's cookie-session client.
+            const { createSupabaseBrowserClient } = await import('../lib/supabase/client');
+            const { error } = await createSupabaseBrowserClient().auth.signInWithPassword({ email: reauth.email, password: reauth.password });
+            if (error) throw Error('That password isn’t right. Nothing was deleted.');
+        }
         const r = await webApi('/api/account/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: 'DELETE' }) });
         if (!r.ok) await readError(r, 'Your account could not be deleted. Your CampusOS data is still there; please retry.');
         forgetAccountTheme();

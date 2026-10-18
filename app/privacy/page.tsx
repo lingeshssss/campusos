@@ -26,13 +26,14 @@ export default function PrivacyPage() {
             <p><strong>Sign in with Apple or Google (optional):</strong> those providers confirm your identity and share your email (Apple can hide it) and name.</p>
         </section>
 
-        <section className="panel"><h2>On your iPhone</h2>
-            <p>The iOS app keeps your sign-in session in the iOS Keychain and an encrypted copy of your data on the device so schedules and flashcards work offline. Reminders are scheduled on the device and are off unless you turn them on. Signing out or deleting your account erases this local data.</p>
+        <section className="panel"><h2>On your phone</h2>
+            <p>The iPhone and Android apps keep your sign-in session in the phone’s secure storage (the iOS Keychain, or encryption with a key held in the Android Keystore) and an encrypted copy of your data on the device so schedules and flashcards work offline. This local data is excluded from device backups. Reminders are scheduled on the device and are off unless you turn them on. Signing out or deleting your account erases this local data and cancels its reminders.</p>
+            <p>The apps contain no advertising, analytics or crash-reporting SDKs. Files you pick (a syllabus PDF or an import file) are read on the phone; only extracted text or the imported data is sent to CampusOS.</p>
         </section>
 
         <section className="panel"><h2>Your choices</h2>
             <p><strong>Download:</strong> Settings → Download my data exports everything you entered as a file.</p>
-            <p><strong>Delete:</strong> Settings → Account → Delete account permanently deletes your account and all of its data, and revokes Google Calendar and Sign in with Apple access where connected.</p>
+            <p><strong>Delete:</strong> Settings → Account → Delete account permanently deletes your account and all of its data, and revokes Google Calendar and Sign in with Apple access where connected. Instructions that don’t require the app: <a className="auth-link" href="/delete-account">campusos account deletion</a>.</p>
             {contact ? <p><strong>Contact:</strong> <a className="auth-link" href={`mailto:${contact}`}>{contact}</a></p> : null}
         </section>
     </main>;

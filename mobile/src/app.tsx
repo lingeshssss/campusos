@@ -4,6 +4,7 @@ import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Keyboard } from '@capacitor/keyboard';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { AlertCircle, CheckCircle2, CloudOff, Download, GraduationCap, RefreshCw } from 'lucide-react';
 import CampusApp from '../../shared/ui/campus-app';
 import { platform, setPlatform } from '../../shared/platform';
@@ -14,8 +15,9 @@ import { config } from './config';
 import { supabase } from './supabase';
 import { createNativePlatform, type SignedOutReason } from './native-platform';
 import { AuthScreens, UpdatePassword, signedOutNotices, type AuthNotice, type AuthScreen } from './auth';
-import { permission, reminderPrefs, setReminderPrefs, type ReminderPrefs } from './notifications';
+import { permission, reminderPrefs, setReminderPrefs, syncReminders, type ReminderPrefs } from './notifications';
 import { forgetAccountTheme } from '../../lib/theme/runtime';
+import { deviceName, isAndroid, notificationSettingsHint } from './device';
 
 /** Accepts only this app's two auth callback forms and returns the PKCE code, if any. */
 export function parseAuthCallback(raw: string): { code?: string; error?: string; next?: string } | null {
@@ -39,10 +41,10 @@ function SyncBanner({ store }: { store: OfflineStore }) {
     if (s.mode === 'conflict') return <div role="alert" className="warning banner sync-banner"><span><AlertCircle size={16} /> {s.message} Choose which copy to keep. Nothing has been overwritten yet.</span><div className="row">
         <button className="secondary" onClick={() => { const p = store.pending(); if (p) void platform().saveFile('campusos-offline-edits.json', JSON.stringify(exportDocument(p.state), null, 2), 'application/json'); }}><Download size={15} />Save a copy of my offline edits</button>
         <button className="secondary" onClick={() => void store.resolveConflict('server')}>Keep the newer saved version</button>
-        <button className="danger" onClick={() => void store.resolveConflict('mine')}>Replace it with this iPhone’s edits</button>
+        <button className="danger" onClick={() => void store.resolveConflict('mine')}>Replace it with this {deviceName}’s edits</button>
     </div></div>;
-    if (s.mode === 'offline') return <div role="status" className="warning banner sync-banner"><span><CloudOff size={16} /> Offline. Showing the copy saved on this iPhone (last synced {when}).{s.pending ? ' Your edits are saved here and will sync when you reconnect.' : ''} Syllabus parsing, the planner and Calendar sync need a connection.</span>{s.pending && <button className="secondary" onClick={() => void store.sync()}><RefreshCw size={15} />Try again</button>}</div>;
-    if (s.mode === 'syncing') return <div role="status" className="success-note banner"><RefreshCw size={16} /> Syncing edits made on this iPhone…</div>;
+    if (s.mode === 'offline') return <div role="status" className="warning banner sync-banner"><span><CloudOff size={16} /> Offline. Showing the copy saved on this {deviceName} (last synced {when}).{s.pending ? ' Your edits are saved here and will sync when you reconnect.' : ''} Syllabus parsing, the planner and Calendar sync need a connection.</span>{s.pending && <button className="secondary" onClick={() => void store.sync()}><RefreshCw size={15} />Try again</button>}</div>;
+    if (s.mode === 'syncing') return <div role="status" className="success-note banner"><RefreshCw size={16} /> Syncing edits made on this {deviceName}…</div>;
     return null;
 }
 
@@ -51,14 +53,14 @@ function DeviceSettings({ store, state }: { store: OfflineStore; state: () => St
     useEffect(() => { void reminderPrefs().then(setPrefs); void permission().then(setPerm); return store.onStatus(setStatus); }, [store]);
     const update = async (next: ReminderPrefs) => { setPrefs(next); setPerm(await setReminderPrefs(next, state())); };
     return <section className="panel">
-        <h2>On this iPhone</h2>
-        <p className="helper">Reminders are scheduled on this iPhone only, from your saved deadlines and the focus timer. They don’t use push notifications or send data anywhere.</p>
+        <h2>On this {deviceName}</h2>
+        <p className="helper">Reminders are scheduled on this {deviceName} only, from your saved deadlines and the focus timer. They don’t use push notifications or send data anywhere.</p>
         {prefs && <div className="form-grid" style={{ marginTop: 14 }}>
             <label className="check-label"><input type="checkbox" checked={prefs.deadlines} onChange={e => void update({ ...prefs, deadlines: e.target.checked })} />Deadline reminders (exams and papers 1 week and 1 day before; others 1 day before)</label>
             <label className="check-label"><input type="checkbox" checked={prefs.timer} onChange={e => void update({ ...prefs, timer: e.target.checked })} />Notify me when a focus or break timer ends</label>
         </div>}
-        {perm === 'denied' && (prefs?.deadlines || prefs?.timer) && <p className="warning"><AlertCircle size={16} />Notifications are turned off for CampusOS. Turn them on in the iOS Settings app → CampusOS → Notifications.</p>}
-        <p className="helper">A copy of your data is stored on this iPhone, encrypted, so schedules and flashcards work offline. Last synced: {status.lastSynced ? new Date(status.lastSynced).toLocaleString() : 'not yet'}.{status.pending ? ' Some edits haven’t synced yet.' : ''} Signing out erases it.</p>
+        {perm === 'denied' && (prefs?.deadlines || prefs?.timer) && <p className="warning"><AlertCircle size={16} />Notifications are turned off for CampusOS. {notificationSettingsHint}</p>}
+        <p className="helper">A copy of your data is stored on this {deviceName}, encrypted, so schedules and flashcards work offline. Last synced: {status.lastSynced ? new Date(status.lastSynced).toLocaleString() : 'not yet'}.{status.pending ? ' Some edits haven’t synced yet.' : ''} Signing out erases it.</p>
     </section>;
 }
 
@@ -74,6 +76,12 @@ function SignedIn({ session, onSignedOut, onChangePassword }: { session: Session
     useEffect(() => native.dispose, [native]);
     const [latest, setLatest] = useState<State | null>(null);
     useEffect(() => native.store.subscribe(l => setLatest(l.state)), [native]);
+    // Returning to the app: rebuild reminders from the current data (covers timezone changes and edits made
+    // elsewhere). Reminder times are absolute instants in campus time, so a device timezone change can't shift them.
+    useEffect(() => {
+        const listener = CapApp.addListener('resume', () => { const s = latest ?? native.store.pending()?.state; if (s) void syncReminders(s); });
+        return () => void listener.then(h => h.remove());
+    }, [latest, native]);
     const name = typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name.split(' ')[0] : '';
     return <CampusApp key={user.id} userId={user.id} displayName={name} email={user.email ?? null} banner={<SyncBanner store={native.store} />} settingsExtras={<DeviceSettings store={native.store} state={() => latest ?? native.store.pending()?.state ?? null} />} />;
 }
@@ -121,7 +129,11 @@ export default function MobileApp() {
         const apply = () => {
             const dark = document.documentElement.getAttribute('data-theme') === 'dark' || !!document.querySelector('.setup-aside');
             const next = dark ? Style.Dark : Style.Light;
-            if (next !== last) { last = next; void StatusBar.setStyle({ style: next }).catch(() => undefined); }
+            if (next === last) return;
+            last = next;
+            // Android: SystemBars styles the status and navigation bar icons together (edge-to-edge layout).
+            if (isAndroid) void SystemBars.setStyle({ style: dark ? SystemBarsStyle.Dark : SystemBarsStyle.Light }).catch(() => undefined);
+            else void StatusBar.setStyle({ style: next }).catch(() => undefined);
         };
         const observer = new MutationObserver(apply);
         observer.observe(document.body, { childList: true, subtree: true });
@@ -129,6 +141,21 @@ export default function MobileApp() {
         apply();
         return () => observer.disconnect();
     }, []);
+
+    // Android back button / gesture: close a dialog or go back a step inside the app; at the top screen,
+    // move CampusOS to the background (like other Android apps) instead of reloading or exiting abruptly.
+    useEffect(() => {
+        if (!isAndroid) return;
+        const listener = CapApp.addListener('backButton', () => {
+            const handled = !window.dispatchEvent(new CustomEvent('campusos:back', { cancelable: true }));
+            if (handled) return;
+            const dialog = document.querySelector('[role=dialog],[role=alertdialog]');
+            if (dialog) { dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return; }
+            if (!session && screen !== 'login') { setScreen('login'); return; }
+            void CapApp.minimizeApp();
+        });
+        return () => void listener.then(h => h.remove());
+    }, [session, screen]);
 
     useEffect(() => {
         if (!session || !notice.info) return;

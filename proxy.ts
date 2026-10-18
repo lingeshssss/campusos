@@ -4,7 +4,7 @@ import { supabasePublicConfig } from './lib/supabase/config';
 import { corsHeaders } from './lib/server/cors';
 
 // Pages reachable without a session. API routes enforce authentication themselves and answer 401 JSON.
-const PUBLIC_PAGES = ['/login', '/signup', '/forgot-password', '/privacy'];
+const PUBLIC_PAGES = ['/login', '/signup', '/forgot-password', '/privacy', '/delete-account'];
 const isPublic = (path: string) => PUBLIC_PAGES.includes(path) || path.startsWith('/auth/') || path.startsWith('/api/') || path.startsWith('/.well-known/');
 
 /** Refreshes the Supabase session cookie on every request and sends signed-out visitors to /login. */

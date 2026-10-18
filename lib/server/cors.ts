@@ -1,7 +1,8 @@
-// The iOS app's bundled web content runs at capacitor://localhost and calls the API cross-origin with a
-// bearer token. Only that exact origin is allowed, without credentials (cookies are never accepted
-// cross-origin), and only for /api routes.
-export const NATIVE_APP_ORIGINS = ['capacitor://localhost'];
+// The mobile apps' bundled web content calls the API cross-origin with a bearer token: the iOS app runs at
+// capacitor://localhost, the Android app at https://localhost (Capacitor's defaults). Only those exact
+// origins are allowed, without credentials (cookies are never accepted cross-origin), and only for /api
+// routes. A page that merely claims one of these origins gains nothing: it still needs the user's token.
+export const NATIVE_APP_ORIGINS = ['capacitor://localhost', 'https://localhost'];
 
 const ALLOW = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',

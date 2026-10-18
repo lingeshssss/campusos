@@ -12,6 +12,7 @@ import { appleSignIn, isAppleCancel } from './apple';
 import { apiStateStore, OfflineError, SessionExpiredError, type Platform } from '../../shared/platform';
 import { createOfflineStore, type OfflineStore } from '../../lib/offline-sync';
 import { forgetAccountTheme } from '../../lib/theme/runtime';
+import { deviceName, platformKind } from './device';
 
 export type SignedOutReason = 'signed_out' | 'account_deleted' | 'session_expired';
 
@@ -30,7 +31,7 @@ export async function nativeApi(path: string, init: RequestInit = {}): Promise<R
     }
 }
 
-/** Removes every trace of the signed-in user from this iPhone. */
+/** Removes every trace of the signed-in user from this device: reminders, encrypted copy, session, theme. */
 export async function wipeDevice() {
     await clearReminders().catch(() => undefined);
     await eraseLocalData().catch(() => undefined);
@@ -58,7 +59,8 @@ export function createNativePlatform(options: { userId: string; providers: strin
     const dispose = () => listeners.forEach(l => void l.then(h => h.remove()));
 
     const platform: Platform = {
-        kind: 'ios',
+        kind: platformKind,
+        deviceName,
         api: nativeApi,
         state: store,
         async downloadApi(path, filename) {
@@ -82,7 +84,12 @@ export function createNativePlatform(options: { userId: string; providers: strin
         changePassword() {
             options.onChangePassword();
         },
-        async deleteAccount() {
+        async deleteAccount(reauth) {
+            if (reauth) {
+                // Fresh sign-in: the server deletes password accounts only after a recent authentication.
+                const { error } = await supabase.auth.signInWithPassword({ email: reauth.email, password: reauth.password });
+                if (error) throw Error('That password isn’t right. Nothing was deleted.');
+            }
             let appleAuthorizationCode: string | undefined;
             if (options.providers.includes('apple') && config.apple) {
                 // Apple requires revoking Sign in with Apple tokens on deletion; a fresh confirmation provides the code.

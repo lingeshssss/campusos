@@ -18,6 +18,8 @@ pnpm dev                        # http://localhost:3000
 
 Full setup and deployment, including Supabase, Google sign-in, Google Calendar, Vercel and data import: **[DEPLOY_TO_VERCEL.md](./DEPLOY_TO_VERCEL.md)**.
 
+Mobile apps (one shared Capacitor client): iPhone **[IOS_APP.md](./IOS_APP.md)**, Android and Google Play **[ANDROID_RELEASE.md](./ANDROID_RELEASE.md)**.
+
 The iPhone app (React + Capacitor, bundled client sharing `shared/` and `lib/` with the website): **[IOS_APP.md](./IOS_APP.md)**. Commands: `pnpm mobile:build`, `pnpm ios:sync`, `pnpm ios:open`.
 
 ## Checks

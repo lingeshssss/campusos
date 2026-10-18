@@ -11,8 +11,10 @@ function origin(name: string, value: string | undefined) {
         problems.push(`${name} is missing or not a URL.`);
         return 'https://invalid.localhost';
     }
-    const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
-    if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) problems.push(`${name} must use https://`);
+    const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '10.0.2.2';
+    // Production (store) builds: HTTPS to a real host only. Local http:// servers are for `pnpm mobile:dev`.
+    if (import.meta.env.PROD && local) problems.push(`${name} points to a local development server; release builds need the production origin.`);
+    if (url.protocol !== 'https:' && !(local && url.protocol === 'http:' && !import.meta.env.PROD)) problems.push(`${name} must use https://`);
     return url.origin;
 }
 
@@ -26,7 +28,8 @@ export const config = {
     supabaseKey: String(env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ''),
     /** Native Sign in with Apple exists only in the iPhone app. */
     apple: env.VITE_ENABLE_APPLE_SIGNIN === 'true' && !isAndroid,
-    google: env.VITE_ENABLE_GOOGLE_SIGNIN === 'true',
+    /** Google sign-in (Supabase OAuth in the system browser). Android can enable it alone; iOS also needs Apple (App Store 4.8). */
+    google: env.VITE_ENABLE_GOOGLE_SIGNIN === 'true' || (isAndroid && env.VITE_ENABLE_GOOGLE_SIGNIN_ANDROID === 'true'),
     /** Custom-scheme callback for OAuth in the in-app browser (PKCE: the code is useless outside this app). */
     oauthCallback: 'campusos://auth/callback',
     /** Universal link (iOS) / App Link (Android) for email confirmation and password reset links. */

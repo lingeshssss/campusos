@@ -5,4 +5,5 @@ interface ImportMetaEnv {
     readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
     readonly VITE_ENABLE_APPLE_SIGNIN?: string;
     readonly VITE_ENABLE_GOOGLE_SIGNIN?: string;
+    readonly VITE_ENABLE_GOOGLE_SIGNIN_ANDROID?: string;
 }

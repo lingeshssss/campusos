@@ -4,7 +4,7 @@ import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Keyboard } from '@capacitor/keyboard';
 import { StatusBar, Style } from '@capacitor/status-bar';
-import { SystemBars, SystemBarsStyle } from '@capacitor/core';
+import { SystemBars, SystemBarsStyle, registerPlugin } from '@capacitor/core';
 import { AlertCircle, CheckCircle2, CloudOff, Download, GraduationCap, RefreshCw } from 'lucide-react';
 import CampusApp from '../../shared/ui/campus-app';
 import { platform, setPlatform } from '../../shared/platform';
@@ -18,6 +18,32 @@ import { AuthScreens, UpdatePassword, signedOutNotices, type AuthNotice, type Au
 import { permission, reminderPrefs, setReminderPrefs, syncReminders, type ReminderPrefs } from './notifications';
 import { forgetAccountTheme } from '../../lib/theme/runtime';
 import { deviceName, isAndroid, notificationSettingsHint } from './device';
+
+// Android only (android/.../CampusThemePlugin.java): the native background behind the system bars.
+const CampusTheme = registerPlugin<{ setBackground(options: { color: string }): Promise<void> }>('CampusTheme');
+
+/**
+ * Height of the top safe area the web content itself must avoid (0 when Android pads the WebView instead).
+ * Measured with a probe on <html>, outside <body>: the status-bar effect observes <body> for changes, and a
+ * probe inside it would re-trigger that observer forever. Cached; re-measured only when the window resizes.
+ */
+let insetTop: number | null = null;
+function contentInsetTop() {
+    if (insetTop === null) {
+        const probe = document.createElement('div');
+        probe.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top)';
+        document.documentElement.appendChild(probe);
+        insetTop = probe.offsetHeight;
+        probe.remove();
+    }
+    return insetTop;
+}
+if (typeof window !== 'undefined') window.addEventListener('resize', () => { insetTop = null; });
+
+const hexColor = (css: string) => {
+    const m = /^\s*(#[0-9a-f]{6})\s*$/i.exec(css);
+    return m ? m[1].toLowerCase() : null;
+};
 
 /** Accepts only this app's two auth callback forms and returns the PKCE code, if any. */
 export function parseAuthCallback(raw: string): { code?: string; error?: string; next?: string } | null {
@@ -54,7 +80,7 @@ function DeviceSettings({ store, state }: { store: OfflineStore; state: () => St
     const update = async (next: ReminderPrefs) => { setPrefs(next); setPerm(await setReminderPrefs(next, state())); };
     return <section className="panel">
         <h2>On this {deviceName}</h2>
-        <p className="helper">Reminders are scheduled on this {deviceName} only, from your saved deadlines and the focus timer. They don’t use push notifications or send data anywhere.</p>
+        <p className="helper">Reminders are scheduled on this {deviceName} only, from your saved deadlines and the focus timer. They don’t use push notifications or send data anywhere.{isAndroid ? ' Android may deliver them late to save battery: deadline reminders by up to about an hour, and a timer alert by up to three-quarters of the time that was left when you left the app. The timer itself always shows the right time when you come back.' : ''}</p>
         {prefs && <div className="form-grid" style={{ marginTop: 14 }}>
             <label className="check-label"><input type="checkbox" checked={prefs.deadlines} onChange={e => void update({ ...prefs, deadlines: e.target.checked })} />Deadline reminders (exams and papers 1 week and 1 day before; others 1 day before)</label>
             <label className="check-label"><input type="checkbox" checked={prefs.timer} onChange={e => void update({ ...prefs, timer: e.target.checked })} />Notify me when a focus or break timer ends</label>
@@ -127,13 +153,24 @@ export default function MobileApp() {
     useEffect(() => {
         let last = '';
         const apply = () => {
+            if (isAndroid) {
+                // What is actually behind the bars: the deep brand strip when sign-in/onboarding content is drawn
+                // under the status bar (newer WebViews), otherwise the native background, which follows the theme.
+                const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+                const brandStrip = !!document.querySelector('.setup') && contentInsetTop() > 0;
+                const bg = hexColor(getComputedStyle(document.documentElement).getPropertyValue('--bg'));
+                const key = `${theme}:${brandStrip}:${bg}`;
+                if (key === last) return;
+                last = key;
+                if (bg) void CampusTheme.setBackground({ color: bg }).catch(() => undefined);
+                void SystemBars.setStyle({ style: brandStrip || theme === 'dark' ? SystemBarsStyle.Dark : SystemBarsStyle.Light }).catch(() => undefined);
+                return;
+            }
             const dark = document.documentElement.getAttribute('data-theme') === 'dark' || !!document.querySelector('.setup-aside');
             const next = dark ? Style.Dark : Style.Light;
             if (next === last) return;
             last = next;
-            // Android: SystemBars styles the status and navigation bar icons together (edge-to-edge layout).
-            if (isAndroid) void SystemBars.setStyle({ style: dark ? SystemBarsStyle.Dark : SystemBarsStyle.Light }).catch(() => undefined);
-            else void StatusBar.setStyle({ style: next }).catch(() => undefined);
+            void StatusBar.setStyle({ style: next }).catch(() => undefined);
         };
         const observer = new MutationObserver(apply);
         observer.observe(document.body, { childList: true, subtree: true });

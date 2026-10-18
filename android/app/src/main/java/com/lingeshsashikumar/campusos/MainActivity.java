@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(CampusThemePlugin.class);
         super.onCreate(savedInstanceState);
         applyNativeBackground();
     }
@@ -22,7 +23,8 @@ public class MainActivity extends BridgeActivity {
 
     // Matches the bg token in app/theme.css (res/values and values-night colors.xml): no white frame in dark mode.
     private void applyNativeBackground() {
-        int background = ContextCompat.getColor(this, R.color.campus_background);
+        Integer chosen = CampusThemePlugin.chosenBackground;
+        int background = chosen != null ? chosen : ContextCompat.getColor(this, R.color.campus_background);
         getWindow().getDecorView().setBackgroundColor(background);
         if (getBridge() != null && getBridge().getWebView() != null) getBridge().getWebView().setBackgroundColor(background);
     }

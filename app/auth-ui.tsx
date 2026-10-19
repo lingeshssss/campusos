@@ -1,18 +1,29 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, GraduationCap, KeyRound, LockKeyhole, Mail } from 'lucide-react';
 import { AuthShell, Divider, GoogleGlyph, Notice, errorMessages, friendly, infoMessages } from '../shared/ui/auth-shell';
-import { createSupabaseBrowserClient } from '../lib/supabase/client';
+import { createSupabaseBrowserClient, isProviderEnabled } from '../lib/supabase/client';
 import { safeNextPath } from '../lib/safe-redirect';
 
 function GoogleButton({ next, disabled }: { next: string; disabled: boolean }) {
     const [busy, setBusy] = useState(false), [error, setError] = useState('');
+    // Returning with the Back button restores this page from the bfcache with the button still busy.
+    useEffect(() => {
+        const reset = (e: PageTransitionEvent) => { if (e.persisted) setBusy(false); };
+        window.addEventListener('pageshow', reset);
+        return () => window.removeEventListener('pageshow', reset);
+    }, []);
     return <><button type="button" className="secondary auth-google" disabled={disabled || busy} onClick={async () => {
         setBusy(true);
         setError('');
         try {
+            if (await isProviderEnabled('google') === false) {
+                setError('Google sign-in isn’t available right now. Please use your email and password below.');
+                setBusy(false);
+                return;
+            }
             // Identity only (email/profile). Google Calendar access is a separate, explicit step inside the app.
             const { error } = await createSupabaseBrowserClient().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`, queryParams: { prompt: 'select_account' } } });
             if (error) throw error;
